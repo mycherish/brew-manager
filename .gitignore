@@ -1,0 +1,12 @@
+# Wails 编译出的二进制文件
+build/bin
+frontend/dist
+frontend/node_modules/
+
+# 系统与 IDE 文件
+.DS_Store
+.vscode/
+.idea/
+
+# Go 依赖
+vendor/
