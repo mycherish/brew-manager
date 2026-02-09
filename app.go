@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"sort"
 	"strings"
@@ -36,10 +37,22 @@ type ActionResponse struct {
 	Message string `json:"message"`
 }
 
+func getBrewPath() string {
+	// 检查 M1/M2 路径
+	if _, err := os.Stat("/opt/homebrew/bin/brew"); err == nil {
+		return "/opt/homebrew/bin/brew"
+	}
+	// 检查 Intel 路径
+	if _, err := os.Stat("/usr/local/bin/brew"); err == nil {
+		return "/usr/local/bin/brew"
+	}
+	return "brew" // 保底方案
+}
+
 func (a *App) GetBrewData() BrewData {
 	// 1. 获取所有服务状态
 	services := make(map[string]string)
-	serviceRaw, _ := exec.Command("brew", "services", "info", "--all", "--json").Output()
+	serviceRaw, _ := exec.Command(getBrewPath(), "services", "info", "--all", "--json").Output()
 	var serviceList []ServiceInfo
 	json.Unmarshal(serviceRaw, &serviceList)
 	for _, s := range serviceList {
@@ -71,7 +84,7 @@ func (a *App) Greet(name string) string {
 
 // brew list 命令并返回字符串数组
 func fetchWithStatus(flag string, serviceMap map[string]string) []BrewPackage {
-	out, _ := exec.Command("brew", "list", "--versions", flag).Output()
+	out, _ := exec.Command(getBrewPath(), "list", "--versions", flag).Output()
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 	var packages []BrewPackage
 
@@ -116,7 +129,7 @@ func fetchWithStatus(flag string, serviceMap map[string]string) []BrewPackage {
 // StartService 启动指定的 Brew 服务
 func (a *App) StartService(name string) ActionResponse {
 	// 执行命令: brew services start <name>
-	_, err := exec.Command("brew", "services", "start", name).CombinedOutput()
+	_, err := exec.Command(getBrewPath(), "services", "start", name).CombinedOutput()
 	if err != nil {
 		return ActionResponse{Success: false, Message: "启动失败：" + err.Error()}
 	}
@@ -126,7 +139,7 @@ func (a *App) StartService(name string) ActionResponse {
 // StopService 停止指定的 Brew 服务
 func (a *App) StopService(name string) ActionResponse {
 	// 执行命令: brew services stop <name>
-	_, err := exec.Command("brew", "services", "stop", name).Output()
+	_, err := exec.Command(getBrewPath(), "services", "stop", name).Output()
 	if err != nil {
 		return ActionResponse{Success: false, Message: "停止失败：" + err.Error()}
 	}

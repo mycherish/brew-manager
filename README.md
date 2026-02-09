@@ -25,7 +25,7 @@
 
 | 概览 | 搜索与操作 |
 | :--- | :--- |
-| ![Main Window](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260209110840246.png) | ![Search](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260209111040397.png) |
+| ![Main Window](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260209115118699.png) | ![Search](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260209111040397.png) |
 
 ---
 
