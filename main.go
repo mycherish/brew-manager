@@ -29,8 +29,8 @@ func main() {
 			WebviewIsTransparent: true,
 			Appearance:           mac.NSAppearanceNameDarkAqua, // 强制深色模式 (可选)
 			About: &mac.AboutInfo{
-				Title:   "wails-test",
-				Message: "你的专属 Brew 管理工具",
+				Title:   "Brew-Manager",
+				Message: "HomeBrew 服务管理",
 			},
 		},
 		AssetServer: &assetserver.Options{
