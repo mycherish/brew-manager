@@ -18,7 +18,7 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:  "wails-test",
+		Title:  "Brew-Manager",
 		Width:  1024,
 		Height: 768,
 		// Frameless: true, // 1. 隐藏标准标题栏

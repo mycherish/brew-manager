@@ -75,6 +75,12 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+
+	// 重点：为 GUI 进程手动注入 PATH，否则执行 brew 命令会卡死或直接报错找不到命令
+	path := os.Getenv("PATH")
+	// 兼容 M1/M2/M3 和 Intel Mac，同时保留原有路径
+	newPath := "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:" + path
+	os.Setenv("PATH", newPath)
 }
 
 // Greet returns a greeting for the given name
@@ -129,9 +135,13 @@ func fetchWithStatus(flag string, serviceMap map[string]string) []BrewPackage {
 // StartService 启动指定的 Brew 服务
 func (a *App) StartService(name string) ActionResponse {
 	// 执行命令: brew services start <name>
-	_, err := exec.Command(getBrewPath(), "services", "start", name).CombinedOutput()
+	out, err := exec.Command(getBrewPath(), "services", "start", name).CombinedOutput()
 	if err != nil {
-		return ActionResponse{Success: false, Message: "启动失败：" + err.Error()}
+		// 这样即使失败，也会把错误信息返回给前端的 alert
+		return ActionResponse{
+			Success: false,
+			Message: fmt.Sprintf("后端执行失败: %v, 输出: %s", err, string(out)),
+		}
 	}
 	return ActionResponse{Success: true, Message: "服务 " + name + "已启动"}
 }
@@ -139,9 +149,13 @@ func (a *App) StartService(name string) ActionResponse {
 // StopService 停止指定的 Brew 服务
 func (a *App) StopService(name string) ActionResponse {
 	// 执行命令: brew services stop <name>
-	_, err := exec.Command(getBrewPath(), "services", "stop", name).Output()
+	out, err := exec.Command(getBrewPath(), "services", "stop", name).CombinedOutput()
 	if err != nil {
-		return ActionResponse{Success: false, Message: "停止失败：" + err.Error()}
+		return ActionResponse{
+			Success: false,
+			Message: fmt.Sprintf("停止失败(%v): %s", err, string(out)),
+		}
+		// return ActionResponse{Success: false, Message: "停止失败：" + err.Error()}
 	}
 	return ActionResponse{Success: true, Message: "服务 " + name + "已停止"}
 }

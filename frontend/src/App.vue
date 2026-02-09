@@ -26,6 +26,20 @@ const filteredCasks = computed(() => {
 // 为了管理每行的 loading，我们用一个 Map 来存储
 const processingMap = reactive(new Map())
 
+// 成功失败提示
+const toast = reactive({
+  show: false,
+  msg: '',
+  type: 'success'
+})
+
+function showToast(msg, type = 'success') {
+  toast.msg = msg
+  toast.type = type
+  toast.show = true
+  setTimeout(() => { toast.show = false }, 3000) // 3秒后消失
+}
+
 // 正在同步系统数据
 async function updateList() {
   const res = await GetBrewData()
@@ -65,27 +79,30 @@ async function handleService(item) {
   // 设置当前行正在处理中
   processingMap.set(item.name, true)
   
-  let result;
-  if (item.status === 'started') {
-    result = await StopService(item.name)
-  } else {
-    result = await StartService(item.name)
-  }
-  // 根据结果给予反馈 (这里使用简单的 alert，或者你可以自定义一个 Toast 组件)
-  if (result.success) {
-    console.log("Success: ", result.message)
-    // 成功后立即刷新列表
-    await updateList()
-  } else {
-    // 失败弹出原生提示
-    alert(result.message)
-
+  try {
+    let result;
+    if (item.status === 'started') {
+      result = await StopService(item.name)
+    } else {
+      result = await StartService(item.name)
+    }
+    // 根据结果给予反馈 (这里使用简单的 alert，或者你可以自定义一个 Toast 组件)
+    if (result.success) {
+      showToast("操作成功: " + result.message)
+      // 成功后立即刷新列表
+      await updateList()
+    } else {
+      // 失败弹出
+      showToast(result.message, 'error')
+    }
+    
+  } catch (err) {
+    alert("系统错误: " + err)
+  } finally {
+    // 结束处理状态
+    processingMap.delete(item.name)
   }
   
-  // 操作完后，自动刷新列表以同步最新状态
-  // await updateList()
-  // 结束处理状态
-  processingMap.delete(item.name)
 }
 
 </script>
@@ -93,7 +110,7 @@ async function handleService(item) {
 <template>
   <div class="container">
     <header class="drag-region">
-      <h2>🍺 我的 Brew 软件清单</h2>
+      <h2>Brew-Manager</h2>
       <div class="toolbar">
         <button @click="manualRefresh" :disabled="data.loading">
           {{ data.loading ? '正在刷新...' : '手动刷新' }}
@@ -156,6 +173,11 @@ async function handleService(item) {
       </section>
     </div>
   </div>
+  <transition name="fade">
+    <div v-if="toast.show" class="toast" :class="toast.type">
+      {{ toast.msg }}
+    </div>
+  </transition>
 </template>
 
 <style scoped>
@@ -316,4 +338,21 @@ button,
 .refresh-tip {
   --wails-draggable: no-drag !important;
 }
+.toast {
+  position: fixed;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 20px;
+  border-radius: 8px;
+  color: white;
+  z-index: 9999;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+.toast.success { background: rgba(66, 185, 131, 0.9); }
+.toast.error { background: rgba(255, 77, 79, 0.9); }
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>
