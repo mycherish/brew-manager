@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, computed, onMounted, onUnmounted } from 'vue' // 增加生命周期钩子
+import { reactive, ref, computed, onMounted, onUnmounted } from 'vue'
 import { GetBrewData, StartService, StopService } from '../wailsjs/go/main/App'
 
 const data = reactive({
@@ -8,366 +8,370 @@ const data = reactive({
   loading: false
 })
 
-const searchQuery = ref('') // 搜索关键词 🔍
-
-// 计算属性：过滤后的 Formulae
-const filteredFormulae = computed(() => {
-  return data.formulae.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
-})
-
-// 计算属性：过滤后的 Casks
-const filteredCasks = computed(() => {
-  return data.casks.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
-})
-// 为了管理每行的 loading，我们用一个 Map 来存储
+const searchQuery = ref('')
 const processingMap = reactive(new Map())
+const toast = reactive({ show: false, msg: '', type: 'success' })
 
-// 成功失败提示
-const toast = reactive({
-  show: false,
-  msg: '',
-  type: 'success'
-})
-
+// 统一的提示函数
 function showToast(msg, type = 'success') {
   toast.msg = msg
   toast.type = type
   toast.show = true
-  setTimeout(() => { toast.show = false }, 3000) // 3秒后消失
+  setTimeout(() => { toast.show = false }, 3000)
 }
 
-// 正在同步系统数据
+// 搜索过滤逻辑
+const filteredFormulae = computed(() => {
+  return data.formulae.filter(item => item.name.toLowerCase().includes(searchQuery.value.toLowerCase()))
+})
+
+const filteredCasks = computed(() => {
+  return data.casks.filter(item => item.name.toLowerCase().includes(searchQuery.value.toLowerCase()))
+})
+
+// 数据刷新逻辑
 async function updateList() {
-  const res = await GetBrewData()
-  data.formulae = res.formulae
-  data.casks = res.casks
-}
-// 定时器
-let timer = null
-onMounted(() => {
-  // 1. 进来先执行一次
-  updateList()
-
-  // 2. 开启每 10 秒一次的自动刷新
-  timer = setInterval(() => {
-    console.log("自动刷新中...")
-    updateList()
-  }, 10000)
-})
-
-onUnmounted(() => {
-  // 3. 别忘了在组件卸载时清理定时器，防止内存泄漏
-  if (timer) {
-    clearInterval(timer)
+  try {
+    const res = await GetBrewData()
+    data.formulae = res.formulae
+    data.casks = res.casks
+  } catch (err) {
+    console.error("刷新失败:", err)
   }
-})
+}
 
-// 手动刷新
+// 手动刷新按钮逻辑
 async function manualRefresh() {
   data.loading = true
   await updateList()
   data.loading = false
+  showToast("数据已同步")
 }
 
-// 处理服务启动/停止
+// 定时器管理
+let timer = null
+onMounted(() => {
+  updateList()
+  timer = setInterval(() => {
+    updateList()
+  }, 10000)
+})
+
+onUnmounted(() => { if (timer) clearInterval(timer) })
+
+// 服务启动/停止逻辑
 async function handleService(item) {
-  // item.loading = true // 给单个项目加个加载状态，防止重复点击
-  // 设置当前行正在处理中
   processingMap.set(item.name, true)
-  
   try {
-    let result;
-    if (item.status === 'started') {
-      result = await StopService(item.name)
-    } else {
-      result = await StartService(item.name)
-    }
-    // 根据结果给予反馈 (这里使用简单的 alert，或者你可以自定义一个 Toast 组件)
+    let result = item.status === 'started' ? await StopService(item.name) : await StartService(item.name)
     if (result.success) {
-      showToast(result.message)
-      // 成功后立即刷新列表
+      showToast(result.message, 'success')
       await updateList()
     } else {
-      // 失败弹出
       showToast(result.message, 'error')
     }
-    
   } catch (err) {
-    alert("系统错误: " + err)
+    showToast("系统错误: " + err, 'error')
   } finally {
-    // 结束处理状态
     processingMap.delete(item.name)
   }
-  
 }
-
 </script>
 
 <template>
   <div class="container">
     <header class="drag-region">
-      <h2>Brew-Manager</h2>
-      <div class="toolbar">
-        <button @click="manualRefresh" :disabled="data.loading">
-          {{ data.loading ? '正在刷新...' : '手动刷新' }}
-        </button>
-        <input 
-            v-model="searchQuery" 
-            type="text" 
-            placeholder="输入软件名搜索..." 
-            class="search-input"
-          />
-          <span class="refresh-tip">每 10s 自动同步状态</span>
+      <div class="header-content">
+        <div class="title-group">
+          <h2>Brew Manager</h2>
+          <span class="sync-tag">Auto Sync ON</span>
+        </div>
+        
+        <div class="toolbar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input v-model="searchQuery" type="text" placeholder="搜索组件..." class="search-input" />
+          </div>
+          <button @click="manualRefresh" class="btn-refresh" :disabled="data.loading">
+            <span v-if="data.loading" class="mini-loader"></span>
+            <span v-else>刷新</span>
+          </button>
+        </div>
       </div>
     </header>
-    
 
-    <div class="lists">
-      <section>
-        <h3>终端工具 ({{ filteredFormulae.length }})</h3>
-        <div class="scroll-box">
-          <div v-for="item in filteredFormulae" :key="item.name" class="item" :class="{ 'is-running': item.status === 'started', 'is-processing': processingMap.has(item.name) }">
-              <div class="name-box">
-                <span v-if="item.status !== 'none'" 
-                      class="dot" 
-                      :class="item.status === 'started' ? 'on' : 'off'">
+    <div class="main-content">
+      <div class="lists-wrapper">
+        <section class="list-column">
+          <div class="column-header">
+            <h3>TERMINAL TOOLS</h3>
+            <span class="count-badge">{{ filteredFormulae.length }}</span>
+          </div>
+          <div class="scroll-area">
+            <div v-for="item in filteredFormulae" :key="item.name" 
+                 class="item-card" :class="{ 'is-processing': processingMap.has(item.name) }">
+              <div class="item-main">
+                <span v-if="item.status !== 'none_tool'" 
+                      class="status-indicator" 
+                      :class="item.status === 'started' ? 'online' : 'offline'">
                 </span>
-                <span class="name">{{ item.name }}</span>
-            </div>
-            <div class="action-box">
-              <span class="version">{{ item.version }}</span>
-              <button 
-                v-if="item.status !== 'none_tool'" 
-                @click="handleService(item)"
-                class="btn-mini"
-                :disabled="processingMap.has(item.name)"
-                :class="item.status === 'started' ? 'btn-stop' : 'btn-start'"
-              >
-                <span v-if="processingMap.has(item.name)" class="loader"></span>
-                <span v-else>{{ item.status === 'started' ? '停止' : '启动' }}</span>
-                
-              </button>
+                <div class="info-meta">
+                  <span class="name">{{ item.name }}</span>
+                  <span class="version">{{ item.version }}</span>
+                </div>
+              </div>
+              
+              <div class="item-actions" v-if="item.status !== 'none_tool'">
+                <button @click="handleService(item)" 
+                        class="mac-btn"
+                        :class="item.status === 'started' ? 'btn-stop' : 'btn-start'"
+                        :disabled="processingMap.has(item.name)">
+                  {{ processingMap.has(item.name) ? '...' : (item.status === 'started' ? '停止' : '启动') }}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section>
-        <h3>桌面应用 ({{ filteredCasks.length }})</h3>
-        <div class="scroll-box">
-          <div v-for="item in filteredCasks" :key="item.name" class="item" :class="{ 'is-running': item.status === 'started' }">
-            <div class="name-box">
-              <span v-if="item.status !== 'none'" 
-                    class="dot" 
-                    :class="item.status === 'started' ? 'on' : 'off'">
-              </span>
-              <span class="name">{{ item.name }}</span>
-            </div>
-            <span class="version">{{ item.version }}</span>
+        <section class="list-column">
+          <div class="column-header">
+            <h3>GUI APPLICATIONS</h3>
+            <span class="count-badge">{{ filteredCasks.length }}</span>
           </div>
+          <div class="scroll-area">
+            <div v-for="item in filteredCasks" :key="item.name" class="item-card">
+              <div class="item-main">
+                <div class="info-meta">
+                  <span class="name">{{ item.name }}</span>
+                  <span class="version text-dim">{{ item.version }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <transition name="toast-slide">
+      <div v-if="toast.show" class="toast-notification" :class="toast.type">
+        <div class="toast-content">
+          <span class="toast-icon">{{ toast.type === 'success' ? '✅' : '❌' }}</span>
+          <span class="toast-msg">{{ toast.msg }}</span>
         </div>
-      </section>
-    </div>
+      </div>
+    </transition>
   </div>
-  <transition name="fade">
-    <div v-if="toast.show" class="toast" :class="toast.type">
-      {{ toast.msg }}
-    </div>
-  </transition>
 </template>
 
 <style scoped>
-body {
+/* 1. 基础容器：毛玻璃与全屏控制 */
+.container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(28, 28, 30, 0.7); /* macOS 暗色面板色 */
+  backdrop-filter: blur(40px) saturate(180%);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  overflow: hidden;
+}
+
+/* 2. 顶部拖拽区与导航 */
+.drag-region {
+  --wails-draggable: drag;
+  padding: 45px 24px 15px; /* 顶部留出红绿灯空间 */
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.title-group h2 {
   margin: 0;
-  /* 使用透明背景，这样 main.go 里的 WindowIsTranslucent 才会生效 */
-  background-color: rgba(0, 0, 0, 0); 
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
-/* 高亮运行中的行 */
-.item.is-running {
-  background-color: rgba(66, 185, 131, 0.1); /* 浅绿色背景 */
-  border-left: 3px solid #42b983; /* 左侧绿色竖线 */
+
+.sync-tag {
+  font-size: 10px;
+  color: #34C759;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-top: 4px;
+  display: block;
 }
-.name-box { display: flex; align-items: center; gap: 8px; }
-.dot {
+
+/* 3. 工具栏：搜索与按钮 */
+.toolbar {
+  display: flex;
+  gap: 12px;
+  --wails-draggable: no-drag;
+}
+
+.search-box {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-input {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+  width: 160px;
+}
+
+.btn-refresh {
+  background: #007AFF; /* macOS 蓝色按钮 */
+  border: none;
+  color: white;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* 4. 列表区域布局 */
+.main-content {
+  flex: 1;
+  overflow: hidden;
+  padding: 10px 20px 20px;
+}
+
+.lists-wrapper {
+  display: flex;
+  gap: 20px;
+  height: 100%;
+}
+
+.list-column {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.column-header {
+  padding: 15px 15px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.column-header h3 {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.count-badge {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+}
+
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px 15px;
+}
+
+/* 5. 列表项卡片设计 */
+.item-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  margin-bottom: 2px;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.item-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.item-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.info-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.name { font-size: 14px; font-weight: 500; color: #fff; }
+.version { font-size: 11px; color: #888; font-family: 'SF Mono', Menlo, monospace; }
+
+/* 6. 状态指示灯 */
+.status-indicator {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  display: inline-block;
 }
-.on { background-color: #42b983; box-shadow: 0 0 5px #42b983; }
-.off { background-color: #ff4d4f; }
-.name { color: #646cff; font-weight: bold; }
-.container { 
-  /* 加上一点半透明背景，配合毛玻璃效果更好看 */
-  background-color: rgba(30, 30, 30, 0.6); 
-  backdrop-filter: blur(20px); /* 额外的毛玻璃加成 */
-  height: 100vh;
-  border-radius: 10px; /* 让窗口圆角更明显 */
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  padding: 0 20px 20px 20px;
-}
-.lists { display: flex; gap: 20px; margin-top: 20px; justify-content: center; }
-.scroll-box { 
-  height: 500px; 
-  overflow-y: auto; 
-  width: 320px;
-  border: 1px solid #444; 
-  background: rgba(26, 26, 26, 0.4);; 
-  padding: 5px;
+.online { background: #34C759; box-shadow: 0 0 8px rgba(52, 199, 89, 0.4); }
+.offline { background: #FF3B30; opacity: 0.5; }
 
-  /* 必须：排除掉不需要拖拽的交互元素 */
-  /* 如果不加 no-drag，你的搜索框将无法选中，按钮也将无法点击 */
-  /* --wails-draggable: no-drag !important; */
-}
-.item { 
-  display: flex; justify-content: space-between; 
-  padding: 8px; border-bottom: 1px solid #333; font-size: 14px;
-  transition: all 0.3s ease; /* 增加一点平滑过渡 */
-}
-.name { color: #646cff; font-weight: bold; }
-.version { color: #888; font-family: monospace; }
-section h3 { color: #fff; border-bottom: 2px solid #646cff; padding-bottom: 5px; }
-button { 
-  cursor: pointer; 
-  padding: 10px 20px; 
-  font-weight: bold; 
-  /* --wails-draggable: no-drag !important; */
-}
-/* 2. 定义拖拽区 */
-.toolbar {
-  display: flex;
-  gap: 15px;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 10px 0 20px 0;
-  background: rgba(255, 255, 255, 0.05);
-  /* --wails-draggable: drag; */
-}
-.search-input {
-  padding: 8px 15px;
-  border-radius: 20px;
-  border: 1px solid #444;
-  background: #2a2a2a;
-  color: white;
-  width: 250px;
-  outline: none;
-  /* --wails-draggable: no-drag !important; */
-}
-
-.search-input:focus {
-  border-color: #646cff;
-}
-.action-box { display: flex; align-items: center; gap: 10px; }
-.btn-mini {
-  padding: 4px 8px;
+/* 7. 操作按钮 (macOS 风格) */
+.mac-btn {
+  padding: 5px 12px;
+  border-radius: 5px;
   font-size: 12px;
-  border-radius: 4px;
-  border: none;
+  font-weight: 500;
+  border: 0.5px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #eee;
   cursor: pointer;
-  /* --wails-draggable: no-drag !important; */
-}
-.btn-start { background: #42b983; color: white; }
-.btn-stop { background: #ff4d4f; color: white; }
-.btn-mini:hover { opacity: 0.8; }
-.refresh-tip {
-  font-size: 12px;
-  color: #666;
-  margin-left: 10px;
-}
-.loader {
-  width: 12px;
-  height: 12px;
-  border: 2px solid #FFF;
-  border-bottom-color: transparent;
-  border-radius: 50%;
-  display: inline-block;
-  animation: rotation 1s linear infinite;
-}
-@keyframes rotation {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  transition: all 0.2s;
 }
 
-/* 处理中的行变淡 */
-.is-processing {
-  opacity: 0.6;
-  pointer-events: none; /* 防止过程中再次点击 */
-}
+.btn-start:hover { background: #34C759; border-color: #34C759; color: white; }
+.btn-stop:hover { background: #FF3B30; border-color: #FF3B30; color: white; }
 
-/* 按钮点击反馈 */
-.btn-mini:active {
-  transform: scale(0.95);
-}
-
-.btn-mini {
-  transition: all 0.2s ease;
-  min-width: 60px; /* 固定宽度防止文字变化时按钮抖动 */
-}
-/* 1. 全局背景透明，让系统的毛玻璃效果透出来 */
-#app {
-  background-color: transparent !important;
-  height: 100vh;
-}
-/* 1. 定义顶部的拖拽大区 */
-.drag-region {
-  --wails-draggable: drag; /* 开启拖拽 */
-  user-select: none;       /* 禁止选中文字，防止干扰拖拽 */
-  padding-top: 32px;       /* 为左上角红绿灯留出空间 */
-  width: 100%;
-  -webkit-user-select: none;
-  cursor: default;
-}
-/* 2. 标题和文字通常不需要交互，保持默认 */
-h2 {
-  margin: 0;
-  padding: 10px 0;
-  text-align: center;
-}
-/* 5. 精确排除：只有这些真正要点的地方才不让拖拽 */
-.search-input, 
-button, 
-.btn-mini,
-.scroll-box,
-.refresh-tip {
-  --wails-draggable: no-drag !important;
-}
-.toast {
+/* 8. 右上角 Toast 通知 */
+.toast-notification {
   position: fixed;
-  /* 调整位置到右上角 */
-  top: 30px; 
-  right: 30px; 
-  
-  /* 移除之前的居中转换 */
-  transform: none; 
-  
-  padding: 12px 24px;
-  border-radius: 8px;
-  color: white;
+  top: 40px;
+  right: 20px;
+  min-width: 240px;
+  background: rgba(40, 40, 40, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  padding: 14px;
   z-index: 9999;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-  
-  /* 增加一个简单的进场动画：从右侧滑入 */
-  transition: all 0.3s ease;
   --wails-draggable: no-drag !important;
 }
-.toast.success { background: rgba(66, 185, 131, 0.9); }
-.toast.error { background: rgba(255, 77, 79, 0.9); }
 
-.fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
-.fade-enter-from, .fade-leave-to {
-  opacity: 0; 
-  transform: translateX(20px);
-}
-.fade-enter-to, .fade-leave-from {
-  opacity: 1;
-  transform: translateX(0);
-}
+.toast-content { display: flex; align-items: center; gap: 10px; }
+.toast-icon { font-size: 16px; }
+.toast-msg { font-size: 13px; font-weight: 500; color: #fff; }
+
+.toast-slide-enter-from, .toast-slide-leave-to { opacity: 0; transform: translateX(30px); }
+.toast-slide-enter-active, .toast-slide-leave-active { transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1); }
+
+/* 处理中状态 */
+.is-processing { opacity: 0.5; pointer-events: none; }
+
+/* 滚动条美化 */
+.scroll-area::-webkit-scrollbar { width: 5px; }
+.scroll-area::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
 </style>
