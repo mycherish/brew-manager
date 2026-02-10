@@ -59,3 +59,19 @@ cd brew-manager
 
 # 启动开发服务器
 wails dev
+```
+
+## 💾 安装与使用 (Installation)
+
+1. 前往 [Releases](你的仓库链接/releases) 页面下载最新的 `.dmg` 文件。
+2. 打开 `.dmg` 并将 `Brew-Manager` 拖入 **Applications** 文件夹。
+
+### ⚠️ 解决“无法验证开发者”问题
+由于本应用未进行 Apple 开发者签名，首次打开时可能会提示“无法验证开发者”或“应用已损坏”。请执行以下操作：
+
+1. **右键点击**应用程序文件夹中的 `Brew-Manager`，选择 **“打开”**，在弹出的对话框中再次点击 **“打开”**。
+2. 如果依然无法运行，请打开终端执行以下命令：
+   ```bash
+   sudo xattr -rd com.apple.quarantine /Applications/Brew-Manager.app
+   ```
+3. 输入开机密码后即可正常使用。
