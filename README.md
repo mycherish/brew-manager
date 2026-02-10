@@ -19,13 +19,19 @@
 - 🔄 **自动同步**：每 10 秒自动更新软件运行状态，无需手动刷新。
 - 📦 **双列表展示**：清晰区分终端工具 (Formulae) 与桌面应用 (Casks)。
 
+### ✨ 视觉与体验 (UX & UI)
+* **Native macOS Feel**: 深度集成系统毛玻璃（Vibrancy）效果，支持暗色模式。
+* **Fluid Animations**: 优化的 Toast 提示与列表交互动效，反馈更自然。
+* **右上角通知系统**: 采用类 macOS 通知中心的交互设计，不干扰核心操作。
+
 ---
 
 ## 📸 界面预览
 
 | 概览 | 搜索与操作 |
 | :--- | :--- |
-| ![Main Window](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260209115118699.png) | ![Search](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260209111040397.png) |
+| ![Main Window](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260210141218730.png) | ![Search](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260210141313033.png) |
+
 
 ---
 
