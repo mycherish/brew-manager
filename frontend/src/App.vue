@@ -88,7 +88,7 @@ async function handleService(item) {
     }
     // 根据结果给予反馈 (这里使用简单的 alert，或者你可以自定义一个 Toast 组件)
     if (result.success) {
-      showToast("操作成功: " + result.message)
+      showToast(result.message)
       // 成功后立即刷新列表
       await updateList()
     } else {
@@ -340,19 +340,34 @@ button,
 }
 .toast {
   position: fixed;
-  top: 50px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 10px 20px;
+  /* 调整位置到右上角 */
+  top: 30px; 
+  right: 30px; 
+  
+  /* 移除之前的居中转换 */
+  transform: none; 
+  
+  padding: 12px 24px;
   border-radius: 8px;
   color: white;
   z-index: 9999;
   backdrop-filter: blur(10px);
   box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  
+  /* 增加一个简单的进场动画：从右侧滑入 */
+  transition: all 0.3s ease;
+  --wails-draggable: no-drag !important;
 }
 .toast.success { background: rgba(66, 185, 131, 0.9); }
 .toast.error { background: rgba(255, 77, 79, 0.9); }
 
 .fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+.fade-enter-from, .fade-leave-to {
+  opacity: 0; 
+  transform: translateX(20px);
+}
+.fade-enter-to, .fade-leave-from {
+  opacity: 1;
+  transform: translateX(0);
+}
 </style>
