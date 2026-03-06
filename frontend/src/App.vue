@@ -50,13 +50,20 @@ onMounted(async () => { // 注意这里加了 async
       </div>
     </header>
 
-    <div v-if="data.loading" class="loading-overlay">
-      <div class="loader-content">
-        <div class="spinner"></div>
-        <p>正在同步 Homebrew 数据...</p>
-        <span class="sub-text">这可能需要几秒钟</span>
+    <Transition name="fade">
+      <div v-if="data.loading" class="loading-overlay">
+        <div class="loader-content">
+          <div class="spinner-container">
+            <div class="spinner-modern"></div>
+          </div>
+          <p class="loading-text">正在同步 Homebrew 数据...</p>
+          <div class="loading-bar-placeholder">
+            <div class="loading-bar-inner"></div>
+          </div>
+        </div>
       </div>
-    </div>
+    </Transition>
+    
 
     <div class="main-content">
       <div class="lists-wrapper">
