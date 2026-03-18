@@ -24,7 +24,10 @@
           :disabled="isProcessing"
           title="重启服务"
       >
-        <span class="restart-icon">↺</span>
+        <svg class="restart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+          <path d="M21 3v5h-5"/>
+        </svg>
       </button>
 
       <button @click="$emit('action', item)"
@@ -117,7 +120,8 @@ defineEmits(['action', 'restart'])
 }
 .restart-icon {
   display: inline-block;
-  font-size: 12px;
+  width: 14px;
+  height: 14px;
 }
 
 /* 4. [优化] 针对不同的服务状态，你可以微调背景色 */
@@ -144,8 +148,8 @@ defineEmits(['action', 'restart'])
 }
 /* 旋转动画 */
 .restart-icon {
-  font-size: 14px;
-  font-weight: bold;
+  width: 14px;
+  height: 14px;
 }
 /* 处理中状态 */
 .is-processing {

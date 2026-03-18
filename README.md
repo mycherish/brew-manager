@@ -5,7 +5,9 @@
 [![Wails](https://img.shields.io/badge/Built%20with-Wails-red.svg)](https://wails.io/)
 [![Vue](https://img.shields.io/badge/Frontend-Vue%203-brightgreen.svg)](https://vuejs.org/)
 [![Go](https://img.shields.io/badge/Backend-Go-blue.svg)](https://go.dev/)
-[![Platform](https://img.shields.io/badge/Platform-macOS-lightgrey.svg)]()
+[![Platform](https://img.shields.io/badge/Platform-macOS%20(Apple%20Silicon)-lightgrey.svg)]()
+[![Release](https://img.shields.io/github/v/release/mycherish/brew-manager)](https://github.com/mycherish/brew-manager/releases)
+[![Stars](https://img.shields.io/github/stars/mycherish/brew-manager)](https://github.com/mycherish/brew-manager)
 
 `Brew Manager` 是一个为 macOS 用户打造的轻量级 Homebrew 图形界面工具。它不仅能让你一眼看清系统安装的所有 Formulae 和 Casks，还能像原生系统服务一样管理终端工具的启动与停止。
 
@@ -14,30 +16,48 @@
 ## ✨ 核心特性
 
 - 🖥️ **原生视觉体验**：采用 macOS Frameless 窗口设计，完美支持 **Vibrancy（毛玻璃）** 效果。
-- ⚡ **服务一键管理**：支持对 `brew services` 进行图形化操作（启动/停止）。
+- ⚡ **服务一键管理**：支持对 `brew services` 进行图形化操作（启动/停止/重启）。
 - 🔍 **丝滑搜索**：实时过滤海量软件清单，瞬间找到目标。
-- 🔄 **自动同步**：每 10 秒自动更新软件运行状态，无需手动刷新。
+- ⏱️ **智能刷新**：每 2 分钟自动刷新当前 tab 数据，底部进度条显示剩余时间。
 - 📦 **双列表展示**：清晰区分终端工具 (Formulae) 与桌面应用 (Casks)。
+- 🔌 **Tap 管理**：全面支持 Homebrew Tap 的添加、移除、更新操作，轻松管理第三方软件源。
+- 📊 **侧边栏统计**：实时显示 GUI 应用、命令行工具、Taps 数量。
 
-### ✨ 视觉与体验 (UX & UI)
-* **Native macOS Feel**: 深度集成系统毛玻璃（Vibrancy）效果，支持暗色模式。
-* **Fluid Animations**: 优化的 Toast 提示与列表交互动效，反馈更自然。
-* **右上角通知系统**: 采用类 macOS 通知中心的交互设计，不干扰核心操作。
+---
 
-### ✨ 功能特性
-* **视觉进化**：自动获取 Homebrew Cask 应用图标，界面更直观。
-* **原生转换引擎**：集成 macOS 系统级 `sips` 技术，实现 `.icns` 到 Web 兼容格式的零延迟转换。
-* **智能映射算法**：内置名称映射与模糊匹配逻辑，解决包名（如 `iterm2`）与应用名（如 `iTerm.app`）不一致的问题。
-* **高性能加载**：采用异步并发提取机制，并配合进程级隔离的临时缓存，确保图标加载不卡顿、不错位。
+## 🆕 v1.3.0 新功能
+
+### 🔌 Tap 管理
+- 完整的 Tap 管理界面
+- 查看已安装的 Taps（官方/第三方分类）
+- 添加新的 Tap
+- 移除第三方 Tap（官方 Tap 保护机制）
+- 批量更新所有 Taps
+- Tap 详情查看（Git URL、描述）
+
+### 🔍 软件包搜索
+- 支持搜索 Formulae、Casks、Taps
+- 一键安装搜索结果
+- 从搜索结果直接添加第三方 Tap
+
+### ⚡ 性能优化
+- 🚀 **智能刷新**：只刷新当前 tab 数据，不刷新全量
+- ⏱️ **进度条显示**：底部进度条实时显示下次刷新时间
+- 📊 **侧边栏统计**：实时显示各类别数量徽章
+
+### 🎨 UI 改进
+- 侧边栏显示各类别数量统计徽章
+- 专业 SVG 图标替换 Emoji
+- 刷新按钮带旋转动画
+- 毛玻璃效果增强
 
 ---
 
 ## 📸 界面预览
 
-| 概览 | 搜索与操作 |
-| :--- | :--- |
-| ![Main Window](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260301002735681.png) | ![Search](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260301002838262.png) |
-
+| 概览 | GUI 应用 | Tap 管理 |
+| :--- | :--- | :--- |
+| ![Overview](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260318235836105.png) | ![GUI Apps](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260318235927897.png) | ![Tap Management](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260319000015839.png) |
 
 ---
 
@@ -45,10 +65,11 @@
 
 | 维度 | 技术 |
 | :--- | :--- |
-| **框架** | [Wails v2](https://wails.io/) (Go + Webview) |
+| **框架** | [Wails v2](https://wails.io/) (Go + WebView) |
 | **前端** | Vue 3 (Composition API) + Vite |
 | **样式** | CSS3 Glassmorphism + Native macOS Titlebar Inset |
-| **后端** | Go (executing brew commands) |
+| **后端** | Go (执行 brew 命令) |
+| **平台** | macOS Apple Silicon (ARM64) |
 
 ---
 
@@ -60,6 +81,7 @@
 - [Node.js](https://nodejs.org/) & [NPM](https://www.npmjs.com/)
 - [Wails CLI](https://wails.io/docs/gettingstarted/installation)
 - [Homebrew](https://brew.sh/)
+- **Apple Silicon Mac** (M1/M2/M3/M4)
 
 ### 2. 开发模式
 ```bash
@@ -73,10 +95,14 @@ cd brew-manager
 wails dev
 ```
 
-## 💾 安装与使用 (Installation)
+---
 
-1. 前往 [Releases](https://github.com/mycherish/brew-manager/releases) 页面下载最新的 `.dmg` 文件。
-2. 打开 `.dmg` 并将 `Brew-Manager` 拖入 **Applications** 文件夹。
+## 💾 安装与使用
+
+### 下载安装
+
+1. 前往 [Releases](https://github.com/mycherish/brew-manager/releases) 页面下载最新的 `.dmg` 文件（仅支持 Apple Silicon）。
+2. 打开 `.dmg` 并将 `Brew-Manager.app` 拖入 **Applications** 文件夹。
 
 ### ⚠️ 解决“无法验证开发者”问题
 由于本应用未进行 Apple 开发者签名，首次打开时可能会提示“无法验证开发者”或“应用已损坏”。请执行以下操作：
@@ -87,3 +113,58 @@ wails dev
    sudo xattr -rd com.apple.quarantine /Applications/Brew-Manager.app
    ```
 3. 输入开机密码后即可正常使用。
+
+---
+
+## 📖 使用指南
+
+### 1. 查看软件
+- **概览**：查看所有软件统计
+- **GUI 应用**：查看已安装的桌面应用
+- **命令行工具**：查看已安装的终端工具
+
+### 2. 服务管理
+- 点击 **启动/停止** 按钮控制服务运行状态
+- 点击 **重启** 按钮重启服务
+- 状态指示灯实时显示服务状态
+
+### 3. Tap 管理
+- 点击 **+ 添加 Tap** 添加第三方软件源
+- 点击 **🔄** 更新单个 Tap
+- 点击 **更新所有** 批量更新所有 Taps
+- 点击 **🗑️** 移除第三方 Tap（官方 Tap 有保护）
+
+### 4. 软件包搜索
+- 在 Taps 页面点击 **添加 Tap** 进入搜索模式
+- 输入关键词搜索 Formulae、Casks、Taps
+- 点击 **安装** 一键安装软件包
+
+---
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+---
+
+## 📄 许可证
+
+MIT License
+
+---
+
+## 🙏 致谢
+
+- [Wails](https://wails.io/) - 让 Go 桌面应用开发如此简单
+- [Homebrew](https://brew.sh/) - macOS 包管理神器
+- 所有开源贡献者
+
+---
+
+**如果你喜欢这个项目，欢迎 Star ⭐ 支持！**

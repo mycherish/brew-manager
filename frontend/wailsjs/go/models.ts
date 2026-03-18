@@ -14,6 +14,24 @@ export namespace main {
 	        this.message = source["message"];
 	    }
 	}
+	export class BrewTap {
+	    name: string;
+	    official: boolean;
+	    url: string;
+	    description: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BrewTap(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.official = source["official"];
+	        this.url = source["url"];
+	        this.description = source["description"];
+	    }
+	}
 	export class BrewPackage {
 	    name: string;
 	    version: string;
@@ -33,6 +51,7 @@ export namespace main {
 	export class BrewData {
 	    formulae: BrewPackage[];
 	    casks: BrewPackage[];
+	    taps: BrewTap[];
 	
 	    static createFrom(source: any = {}) {
 	        return new BrewData(source);
@@ -42,6 +61,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.formulae = this.convertValues(source["formulae"], BrewPackage);
 	        this.casks = this.convertValues(source["casks"], BrewPackage);
+	        this.taps = this.convertValues(source["taps"], BrewTap);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -62,6 +82,7 @@ export namespace main {
 		    return a;
 		}
 	}
+	
 
 }
 
