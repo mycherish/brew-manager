@@ -18,6 +18,10 @@ export function GetBrewTaps() {
   return window['go']['main']['App']['GetBrewTaps']();
 }
 
+export function GetDockerContainers() {
+  return window['go']['main']['App']['GetDockerContainers']();
+}
+
 export function GetTapPackageCount(arg1) {
   return window['go']['main']['App']['GetTapPackageCount'](arg1);
 }
@@ -42,8 +46,16 @@ export function SearchPackages(arg1) {
   return window['go']['main']['App']['SearchPackages'](arg1);
 }
 
+export function StartDockerContainer(arg1) {
+  return window['go']['main']['App']['StartDockerContainer'](arg1);
+}
+
 export function StartService(arg1) {
   return window['go']['main']['App']['StartService'](arg1);
+}
+
+export function StopDockerContainer(arg1) {
+  return window['go']['main']['App']['StopDockerContainer'](arg1);
 }
 
 export function StopService(arg1) {

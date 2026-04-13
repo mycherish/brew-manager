@@ -45,8 +45,9 @@ type BrewTap struct {
 
 // ActionResponse 操作结果返回
 type ActionResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
+	Success bool        `json:"success"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
 }
 
 // 获取 brew 的路径
@@ -369,7 +370,7 @@ func parseTapInfo(tapName, brewPath string) BrewTap {
 // AddTap 添加新的 tap
 func (a *App) AddTap(tapName string) ActionResponse {
 	brewPath := getBrewPath()
-	
+
 	// 检查 tap 是否已经存在
 	taps := a.GetBrewTaps()
 	for _, tap := range taps {
@@ -400,7 +401,7 @@ func (a *App) AddTap(tapName string) ActionResponse {
 // RemoveTap 移除 tap
 func (a *App) RemoveTap(tapName string, force bool) ActionResponse {
 	brewPath := getBrewPath()
-	
+
 	// 检查是否为官方 tap，警告用户
 	tap := parseTapInfo(tapName, brewPath)
 	if tap.Official && !force {
@@ -429,7 +430,7 @@ func (a *App) RemoveTap(tapName string, force bool) ActionResponse {
 // UpdateTap 更新指定 tap
 func (a *App) UpdateTap(tapName string) ActionResponse {
 	brewPath := getBrewPath()
-	
+
 	// 检查 tap 是否存在
 	taps := a.GetBrewTaps()
 	found := false
@@ -466,7 +467,7 @@ func (a *App) UpdateTap(tapName string) ActionResponse {
 // UpdateAllTaps 更新所有 taps
 func (a *App) UpdateAllTaps() ActionResponse {
 	brewPath := getBrewPath()
-	
+
 	// 执行 brew update 命令更新所有 taps
 	cmd := exec.Command(brewPath, "update")
 	output, err := cmd.CombinedOutput()
@@ -491,7 +492,7 @@ func (a *App) GetTapPackageCount(tapName string) map[string]int {
 	}
 
 	brewPath := getBrewPath()
-	
+
 	// 获取 tap 中的 formulae
 	cmd := exec.Command(brewPath, "info", "--json=v2", tapName)
 	output, err := cmd.Output()
@@ -512,22 +513,22 @@ func (a *App) GetTapPackageCount(tapName string) map[string]int {
 // SearchPackages 搜索可安装的软件包和 tap
 func (a *App) SearchPackages(query string) map[string]interface{} {
 	brewPath := getBrewPath()
-	
+
 	// 搜索 formulae
 	formulaCmd := exec.Command(brewPath, "search", "--formula", query)
 	formulaOutput, _ := formulaCmd.Output()
-	
+
 	// 搜索 casks
 	caskCmd := exec.Command(brewPath, "search", "--cask", query)
 	caskOutput, _ := caskCmd.Output()
-	
+
 	// 解析结果
 	formulae := parseSearchResults(string(formulaOutput))
 	casks := parseSearchResults(string(caskOutput))
-	
+
 	// 搜索 taps（通过 GitHub API 搜索 homebrew- 开头的仓库）
 	taps := a.searchTaps(query)
-	
+
 	return map[string]interface{}{
 		"formulae": formulae,
 		"casks":    casks,
@@ -539,16 +540,16 @@ func (a *App) SearchPackages(query string) map[string]interface{} {
 // searchTaps 搜索可用的 taps
 func (a *App) searchTaps(query string) []map[string]string {
 	var taps []map[string]string
-	
+
 	// 使用 curl 搜索 GitHub 上 homebrew- 开头的仓库
 	searchURL := fmt.Sprintf("https://api.github.com/search/repositories?q=%s+homebrew+in:name&sort=stars&order=desc&per_page=10", query)
-	
+
 	cmd := exec.Command("curl", "-s", "-H", "Accept: application/vnd.github.v3+json", searchURL)
 	output, err := cmd.Output()
 	if err != nil {
 		return taps
 	}
-	
+
 	var result struct {
 		Items []struct {
 			FullName    string `json:"full_name"`
@@ -557,7 +558,7 @@ func (a *App) searchTaps(query string) []map[string]string {
 			Stargazers  int    `json:"stargazers_count"`
 		} `json:"items"`
 	}
-	
+
 	if json.Unmarshal(output, &result) == nil {
 		for _, item := range result.Items {
 			// 只返回包含 homebrew- 的仓库
@@ -574,7 +575,7 @@ func (a *App) searchTaps(query string) []map[string]string {
 			}
 		}
 	}
-	
+
 	return taps
 }
 
@@ -582,7 +583,7 @@ func (a *App) searchTaps(query string) []map[string]string {
 func parseSearchResults(output string) []string {
 	var results []string
 	lines := strings.Split(strings.TrimSpace(output), "\n")
-	
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		// 跳过空行和提示信息
@@ -591,19 +592,19 @@ func parseSearchResults(output string) []string {
 		}
 		results = append(results, line)
 	}
-	
+
 	return results
 }
 
 // InstallPackage 安装软件包
 func (a *App) InstallPackage(name string, isCask bool) ActionResponse {
 	brewPath := getBrewPath()
-	
+
 	// 先搜索确认包是否存在
 	searchResult := a.SearchPackages(name)
 	formulae := searchResult["formulae"].([]string)
 	casks := searchResult["casks"].([]string)
-	
+
 	// 检查是否找到完全匹配或包含该名称的包
 	found := false
 	if !isCask {
@@ -621,14 +622,14 @@ func (a *App) InstallPackage(name string, isCask bool) ActionResponse {
 			}
 		}
 	}
-	
+
 	if !found {
 		return ActionResponse{
 			Success: false,
 			Message: fmt.Sprintf("未找到软件包 '%s'，请先搜索确认", name),
 		}
 	}
-	
+
 	// 执行安装命令
 	var cmd *exec.Cmd
 	if isCask {
@@ -636,7 +637,7 @@ func (a *App) InstallPackage(name string, isCask bool) ActionResponse {
 	} else {
 		cmd = exec.Command(brewPath, "install", name)
 	}
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return ActionResponse{
@@ -644,9 +645,104 @@ func (a *App) InstallPackage(name string, isCask bool) ActionResponse {
 			Message: fmt.Sprintf("安装失败: %s", string(output)),
 		}
 	}
-	
+
 	return ActionResponse{
 		Success: true,
 		Message: fmt.Sprintf("'%s' 安装成功", name),
+	}
+}
+
+// ------------------------ Docker 容器管理功能 ------------------------
+
+// DockerContainer Docker 容器信息
+type DockerContainer struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Image  string `json:"image"`
+	Status string `json:"status"` // "running", "exited", "paused", etc.
+	State  string `json:"state"`  // 容器状态
+	Ports  string `json:"ports"`  // 端口映射
+}
+
+// GetDockerContainers 获取所有 Docker 容器
+func (a *App) GetDockerContainers() ActionResponse {
+	// 检查 docker 命令是否存在
+	if _, err := exec.LookPath("docker"); err != nil {
+		return ActionResponse{Success: false, Message: "Docker 未安装"}
+	}
+
+	cmd := exec.Command("docker", "ps", "-a", "--format", "json")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		errMsg := string(output)
+		if strings.Contains(errMsg, "permission denied") || strings.Contains(errMsg, "Is the docker daemon running") {
+			return ActionResponse{Success: false, Message: "Docker 未启动或权限不足"}
+		}
+		return ActionResponse{Success: false, Message: fmt.Sprintf("Docker 错误: %s", errMsg)}
+	}
+
+	var containers []DockerContainer
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		var c struct {
+			ID     string `json:"ID"`
+			Names  string `json:"Names"`
+			Image  string `json:"Image"`
+			Status string `json:"Status"`
+			State  string `json:"State"`
+			Ports  string `json:"Ports"`
+		}
+		if err := json.Unmarshal([]byte(line), &c); err != nil {
+			continue
+		}
+		containers = append(containers, DockerContainer{
+			ID: c.ID, Name: c.Names, Image: c.Image,
+			Status: c.Status, State: c.State, Ports: c.Ports,
+		})
+	}
+
+	return ActionResponse{Success: true, Data: containers}
+}
+
+// shortID 安全截取容器 ID（防止越界 panic）
+func shortID(id string) string {
+	if len(id) > 12 {
+		return id[:12]
+	}
+	return id
+}
+
+// StartDockerContainer 启动 Docker 容器
+func (a *App) StartDockerContainer(containerID string) ActionResponse {
+	cmd := exec.Command("docker", "start", containerID)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return ActionResponse{
+			Success: false,
+			Message: fmt.Sprintf("启动失败: %s", string(output)),
+		}
+	}
+	return ActionResponse{
+		Success: true,
+		Message: fmt.Sprintf("容器 %s 已启动", shortID(containerID)),
+	}
+}
+
+// StopDockerContainer 停止 Docker 容器
+func (a *App) StopDockerContainer(containerID string) ActionResponse {
+	cmd := exec.Command("docker", "stop", containerID)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return ActionResponse{
+			Success: false,
+			Message: fmt.Sprintf("停止失败: %s", string(output)),
+		}
+	}
+	return ActionResponse{
+		Success: true,
+		Message: fmt.Sprintf("容器 %s 已停止", shortID(containerID)),
 	}
 }

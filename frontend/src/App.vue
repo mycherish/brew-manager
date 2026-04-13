@@ -7,6 +7,7 @@ import Overview from './views/Overview.vue'
 import GuiApps from './views/GuiApps.vue'
 import TuiTools from './views/TuiTools.vue'
 import TapsPage from './views/TapsPage.vue'
+import DockerContainers from './views/DockerContainers.vue'
 
 const {
   data, currentTab, setCurrentTab, stats,
@@ -104,6 +105,11 @@ onUnmounted(() => {
           @remove="handleRemoveTap"
           @update="handleUpdateTap"
           @update-all="handleUpdateAllTaps"
+        />
+        
+        <!-- Docker 容器页 -->
+        <DockerContainers 
+          v-else-if="currentTab === 'docker'"
         />
       </div>
     </main>

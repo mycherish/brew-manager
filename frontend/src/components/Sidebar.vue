@@ -33,7 +33,8 @@ const tabs = [
   { id: 'overview', label: '概览', icon: '🏠' },
   { id: 'gui', label: 'GUI 应用', icon: '📦' },
   { id: 'tui', label: '命令行工具', icon: '💻' },
-  { id: 'taps', label: 'Taps', icon: '🔗' }
+  { id: 'taps', label: 'Taps', icon: '🔗' },
+  { id: 'docker', label: 'Docker', icon: '🐳' }
 ]
 
 /**
