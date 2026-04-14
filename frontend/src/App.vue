@@ -15,9 +15,9 @@ const {
   refreshProgress, // 自动刷新进度
   updateList, refreshCurrentTab,
   handleService, handleRestart,
-  showToast,
   handleAddTap, handleRemoveTap, handleUpdateTap, handleUpdateAllTaps,
-  startAutoRefresh, stopAutoRefresh
+  startAutoRefresh, stopAutoRefresh,
+  updateDockerCount
 } = useBrew()
 
 // 切换 tab
@@ -108,8 +108,9 @@ onUnmounted(() => {
         />
         
         <!-- Docker 容器页 -->
-        <DockerContainers 
+        <DockerContainers
           v-else-if="currentTab === 'docker'"
+          @update-count="updateDockerCount"
         />
       </div>
     </main>

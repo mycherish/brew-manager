@@ -1,5 +1,5 @@
 import { reactive, ref, computed, onMounted, onUnmounted } from 'vue'
-import { GetBrewData, StartService, StopService, GetAppIcon, RestartService, AddTap, RemoveTap, UpdateTap, UpdateAllTaps, SearchPackages, InstallPackage } from '../../wailsjs/go/main/App'
+import { GetBrewData, StartService, StopService, GetAppIcon, RestartService, AddTap, RemoveTap, UpdateTap, UpdateAllTaps, SearchPackages, InstallPackage, GetDockerContainers } from '../../wailsjs/go/main/App'
 
 // 自动刷新间隔（2分钟）
 const AUTO_REFRESH_INTERVAL = 120000
@@ -10,6 +10,7 @@ export function useBrew() {
   const searchQuery = ref('')
   const processingMap = reactive(new Map())
   const toast = reactive({ show: false, msg: '', type: 'success' })
+  const dockerCount = ref(0) // Docker 容器数量
   
   // 自动刷新进度条状态
   const refreshProgress = reactive({
@@ -42,13 +43,27 @@ export function useBrew() {
     data.casks.filter(item => item.name.toLowerCase().includes(searchQuery.value.toLowerCase()))
   )
 
+  // 设置 Docker 容器数量（内部复用函数）
+  function setDockerCount(result) {
+    if (result.success) {
+      dockerCount.value = (result.data || []).length
+    } else {
+      dockerCount.value = 0
+    }
+  }
+
   // 全量刷新（启动时用）
   async function updateList() {
     try {
       data.loading = true
       refreshProgress.isRefreshing = true
       
-      const res = await GetBrewData()
+      // 并行获取 brew 数据和 docker 数据
+      const [res, dockerRes] = await Promise.all([
+        GetBrewData(),
+        GetDockerContainers()
+      ])
+      
       // 遍历 Casks 为每个应用请求图标
       const caskWithIcons = await Promise.all(res.casks.map(async (item) => {
         const icon = await GetAppIcon(item.name)
@@ -57,6 +72,9 @@ export function useBrew() {
       data.casks = caskWithIcons
       data.formulae = res.formulae
       data.taps = res.taps || []
+      
+      // 更新 Docker 数量
+      setDockerCount(dockerRes)
       
       // 更新刷新时间
       refreshProgress.lastRefreshTime = Date.now()
@@ -80,6 +98,8 @@ export function useBrew() {
         await refreshFormulae()
       } else if (currentTab.value === 'taps') {
         await refreshTaps()
+      } else if (currentTab.value === 'docker') {
+        await updateDockerCount()
       } else {
         // overview 需要全部数据
         await updateList()
@@ -275,33 +295,45 @@ export function useBrew() {
   const stats = computed(() => ({
     gui: data.casks.length,
     tui: data.formulae.length,
-    taps: data.taps.length
+    taps: data.taps.length,
+    docker: dockerCount.value
   }))
 
+  // 更新 Docker 容器数量
+  async function updateDockerCount() {
+    try {
+      const result = await GetDockerContainers()
+      setDockerCount(result)
+    } catch (err) {
+      console.error('获取 Docker 数量失败:', err)
+    }
+  }
+
   return {
-    data, 
-    currentTab, 
-    setCurrentTab, 
-    searchQuery, 
-    processingMap, 
-    toast, 
+    data,
+    currentTab,
+    setCurrentTab,
+    searchQuery,
+    processingMap,
+    toast,
     stats,
     refreshProgress, // 自动刷新进度状态
-    filteredFormulae, 
+    filteredFormulae,
     filteredCasks,
-    updateList, 
-    refreshCurrentTab, 
-    refreshCasks, 
-    refreshFormulae, 
+    updateList,
+    refreshCurrentTab,
+    refreshCasks,
+    refreshFormulae,
     refreshTaps,
-    startAutoRefresh, 
+    startAutoRefresh,
     stopAutoRefresh,
-    handleService, 
+    handleService,
     handleRestart,
     showToast,
-    handleAddTap, 
-    handleRemoveTap, 
-    handleUpdateTap, 
-    handleUpdateAllTaps
+    handleAddTap,
+    handleRemoveTap,
+    handleUpdateTap,
+    handleUpdateAllTaps,
+    updateDockerCount
   }
 }

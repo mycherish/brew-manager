@@ -2,6 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { GetDockerContainers, StartDockerContainer, StopDockerContainer } from '../../wailsjs/go/main/App'
 
+const emit = defineEmits(['update-count'])
+
 const containers = ref([])
 const loading = ref(true)
 const error = ref('')
@@ -32,6 +34,8 @@ async function loadContainers() {
     } else {
       containers.value = result.data || []
     }
+    // 通知父组件更新数量
+    emit('update-count')
   } catch (e) {
     error.value = '无法连接 Docker，请确认 Docker Desktop 已启动'
   } finally {

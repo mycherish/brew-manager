@@ -91,6 +91,7 @@ function formatTimeLeft(progress) {
         <span v-if="tab.id === 'gui'" class="nav-badge">{{ stats.gui }}</span>
         <span v-if="tab.id === 'tui'" class="nav-badge">{{ stats.tui }}</span>
         <span v-if="tab.id === 'taps'" class="nav-badge">{{ stats.taps }}</span>
+        <span v-if="tab.id === 'docker'" class="nav-badge">{{ stats.docker }}</span>
       </button>
     </nav>
     
