@@ -6,6 +6,8 @@ export function AddTap(arg1:string):Promise<main.ActionResponse>;
 
 export function GetAppIcon(arg1:string):Promise<string>;
 
+export function GetAppIcons(arg1:Array<string>):Promise<Record<string, string>>;
+
 export function GetBrewData():Promise<main.BrewData>;
 
 export function GetBrewTaps():Promise<Array<main.BrewTap>>;

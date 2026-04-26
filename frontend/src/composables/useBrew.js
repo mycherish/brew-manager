@@ -1,5 +1,5 @@
 import { reactive, ref, computed, onMounted, onUnmounted } from 'vue'
-import { GetBrewData, StartService, StopService, GetAppIcon, RestartService, AddTap, RemoveTap, UpdateTap, UpdateAllTaps, SearchPackages, InstallPackage, GetDockerContainers } from '../../wailsjs/go/main/App'
+import { GetBrewData, StartService, StopService, GetAppIcons, RestartService, AddTap, RemoveTap, UpdateTap, UpdateAllTaps, SearchPackages, InstallPackage, GetDockerContainers } from '../../wailsjs/go/main/App'
 
 // 自动刷新间隔（2分钟）
 const AUTO_REFRESH_INTERVAL = 120000
@@ -64,10 +64,11 @@ export function useBrew() {
         GetDockerContainers()
       ])
       
-      // 遍历 Casks 为每个应用请求图标
-      const caskWithIcons = await Promise.all(res.casks.map(async (item) => {
-        const icon = await GetAppIcon(item.name)
-        return { ...item, iconBase64: icon }
+      // 批量获取所有 cask 图标（1 次 RPC 替代 N 次）
+      const iconMap = await GetAppIcons(res.casks.map(c => c.name))
+      const caskWithIcons = res.casks.map(item => ({
+        ...item,
+        iconBase64: iconMap[item.name] || ''
       }))
       data.casks = caskWithIcons
       data.formulae = res.formulae
@@ -117,11 +118,11 @@ export function useBrew() {
   async function refreshCasks() {
     try {
       const res = await GetBrewData()
-      const caskWithIcons = await Promise.all(res.casks.map(async (item) => {
-        const icon = await GetAppIcon(item.name)
-        return { ...item, iconBase64: icon }
+      const iconMap = await GetAppIcons(res.casks.map(c => c.name))
+      data.casks = res.casks.map(item => ({
+        ...item,
+        iconBase64: iconMap[item.name] || ''
       }))
-      data.casks = caskWithIcons
     } catch (err) {
       console.error("刷新 Casks 失败:", err)
     }

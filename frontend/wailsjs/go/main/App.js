@@ -10,6 +10,10 @@ export function GetAppIcon(arg1) {
   return window['go']['main']['App']['GetAppIcon'](arg1);
 }
 
+export function GetAppIcons(arg1) {
+  return window['go']['main']['App']['GetAppIcons'](arg1);
+}
+
 export function GetBrewData() {
   return window['go']['main']['App']['GetBrewData']();
 }

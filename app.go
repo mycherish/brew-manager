@@ -273,6 +273,15 @@ func (a *App) GetAppIcon(appName string) string {
 	return base64.StdEncoding.EncodeToString(imgData)
 }
 
+// GetAppIcons 批量获取应用图标，一次 RPC 替代 N 次，显著减少加载时间
+func (a *App) GetAppIcons(names []string) map[string]string {
+	result := make(map[string]string, len(names))
+	for _, name := range names {
+		result[name] = a.GetAppIcon(name)
+	}
+	return result
+}
+
 func capitalize(s string) string {
 	if s == "" {
 		return ""
