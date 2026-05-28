@@ -28,6 +28,8 @@ const props = defineProps({
 
 const emit = defineEmits(['change-tab', 'refresh'])
 
+const appVersion = __APP_VERSION__
+
 // Tab 配置
 const tabs = [
   { id: 'overview', label: '概览', icon: '🏠' },
@@ -126,7 +128,7 @@ function formatTimeLeft(progress) {
       </div>
       
       <!-- 版本信息 -->
-      <div class="app-version">v1.3.0</div>
+      <div class="app-version">v{{ appVersion }}</div>
     </div>
   </aside>
 </template>
