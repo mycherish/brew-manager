@@ -14,8 +14,16 @@ export function GetAppIcons(arg1) {
   return window['go']['main']['App']['GetAppIcons'](arg1);
 }
 
+export function GetBrewCasks() {
+  return window['go']['main']['App']['GetBrewCasks']();
+}
+
 export function GetBrewData() {
   return window['go']['main']['App']['GetBrewData']();
+}
+
+export function GetBrewFormulae() {
+  return window['go']['main']['App']['GetBrewFormulae']();
 }
 
 export function GetBrewTaps() {
@@ -38,8 +46,8 @@ export function InstallPackage(arg1, arg2) {
   return window['go']['main']['App']['InstallPackage'](arg1, arg2);
 }
 
-export function RemoveTap(arg1, arg2) {
-  return window['go']['main']['App']['RemoveTap'](arg1, arg2);
+export function RemoveTap(arg1) {
+  return window['go']['main']['App']['RemoveTap'](arg1);
 }
 
 export function RestartService(arg1) {

@@ -8,7 +8,11 @@ export function GetAppIcon(arg1:string):Promise<string>;
 
 export function GetAppIcons(arg1:Array<string>):Promise<Record<string, string>>;
 
+export function GetBrewCasks():Promise<Array<main.BrewPackage>>;
+
 export function GetBrewData():Promise<main.BrewData>;
+
+export function GetBrewFormulae():Promise<Array<main.BrewPackage>>;
 
 export function GetBrewTaps():Promise<Array<main.BrewTap>>;
 
@@ -20,7 +24,7 @@ export function Greet(arg1:string):Promise<string>;
 
 export function InstallPackage(arg1:string,arg2:boolean):Promise<main.ActionResponse>;
 
-export function RemoveTap(arg1:string,arg2:boolean):Promise<main.ActionResponse>;
+export function RemoveTap(arg1:string):Promise<main.ActionResponse>;
 
 export function RestartService(arg1:string):Promise<main.ActionResponse>;
 

@@ -26,21 +26,10 @@ const showAddForm = ref(false)
 const searchResults = ref([])
 const searching = ref(false)
 
-const officialTaps = computed(() => props.taps.filter(tap => tap.official))
-const thirdPartyTaps = computed(() => props.taps.filter(tap => !tap.official))
-
-const filteredOfficialTaps = computed(() => {
-  if (!localSearch.value) return officialTaps.value
+const filteredTaps = computed(() => {
+  if (!localSearch.value) return props.taps
   const query = localSearch.value.toLowerCase()
-  return officialTaps.value.filter(tap => 
-    tap.name.toLowerCase().includes(query)
-  )
-})
-
-const filteredThirdPartyTaps = computed(() => {
-  if (!localSearch.value) return thirdPartyTaps.value
-  const query = localSearch.value.toLowerCase()
-  return thirdPartyTaps.value.filter(tap => 
+  return props.taps.filter(tap =>
     tap.name.toLowerCase().includes(query)
   )
 })
@@ -248,47 +237,13 @@ function openGitHubUrl(tap) {
       </div>
     </div>
 
-    <!-- 官方 Taps -->
-    <div v-if="filteredOfficialTaps.length > 0" class="tap-section">
+    <!-- Tap 列表 -->
+    <div v-if="filteredTaps.length > 0" class="tap-section">
       <h3 class="section-title">
-        <span class="badge badge-official">官方</span>
-        官方 Taps ({{ filteredOfficialTaps.length }})
+        已安装的 Taps ({{ filteredTaps.length }})
       </h3>
       <div class="tap-list">
-        <div v-for="tap in filteredOfficialTaps" :key="tap.name" class="tap-card official">
-          <div class="tap-info">
-            <div class="tap-name">{{ tap.name }}</div>
-            <div class="tap-desc">{{ formatDescription(tap.description) }}</div>
-            <button 
-              class="tap-url"
-              @click.stop="openGitHubUrl(tap)"
-            >
-              <span class="url-icon">🔗</span>
-              {{ getGitHubDisplay(tap) }}
-            </button>
-          </div>
-          <button 
-            type="button"
-            @click="handleUpdateTap(tap.name)" 
-            class="btn-icon"
-            :disabled="processingMap.get(`tap-update-${tap.name}`)"
-            title="更新"
-          >
-            <span v-if="processingMap.get(`tap-update-${tap.name}`)" class="spinner"></span>
-            <span v-else><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 第三方 Taps -->
-    <div v-if="filteredThirdPartyTaps.length > 0" class="tap-section">
-      <h3 class="section-title">
-        <span class="badge badge-third">第三方</span>
-        第三方 Taps ({{ filteredThirdPartyTaps.length }})
-      </h3>
-      <div class="tap-list">
-        <div v-for="tap in filteredThirdPartyTaps" :key="tap.name" class="tap-card third-party">
+        <div v-for="tap in filteredTaps" :key="tap.name" class="tap-card">
           <div class="tap-info">
             <div class="tap-name">{{ tap.name }}</div>
             <div class="tap-desc">{{ formatDescription(tap.description) }}</div>
@@ -344,7 +299,7 @@ function openGitHubUrl(tap) {
       <p>暂无添加的 Taps</p>
       <p class="hint">点击"添加 Tap"按钮开始添加第三方软件源</p>
     </div>
-    <div v-else-if="filteredOfficialTaps.length === 0 && filteredThirdPartyTaps.length === 0" class="empty-state">
+    <div v-else-if="filteredTaps.length === 0" class="empty-state">
       <div class="empty-icon">🔍</div>
       <p>未找到匹配的 Taps</p>
     </div>
@@ -618,16 +573,6 @@ function openGitHubUrl(tap) {
   font-weight: 600;
 }
 
-.badge-official {
-  background: rgba(0, 122, 255, 0.2);
-  color: #007AFF;
-}
-
-.badge-third {
-  background: rgba(46, 204, 113, 0.2);
-  color: #2ECC71;
-}
-
 .tap-list {
   display: flex;
   flex-direction: column;
@@ -641,6 +586,7 @@ function openGitHubUrl(tap) {
   padding: 14px 16px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
+  border-left: 3px solid #2ECC71;
   border-radius: 8px;
   transition: all 0.2s ease;
 }

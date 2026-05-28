@@ -1,5 +1,5 @@
-import { reactive, ref, computed, onMounted, onUnmounted } from 'vue'
-import { GetBrewData, StartService, StopService, GetAppIcons, RestartService, AddTap, RemoveTap, UpdateTap, UpdateAllTaps, SearchPackages, InstallPackage, GetDockerContainers } from '../../wailsjs/go/main/App'
+import { reactive, ref, computed } from 'vue'
+import { GetBrewData, GetBrewCasks, GetBrewFormulae, GetBrewTaps, StartService, StopService, GetAppIcons, RestartService, AddTap, RemoveTap, UpdateTap, UpdateAllTaps, SearchPackages, InstallPackage, GetDockerContainers } from '../../wailsjs/go/main/App'
 
 // 自动刷新间隔（2分钟）
 const AUTO_REFRESH_INTERVAL = 120000
@@ -114,12 +114,12 @@ export function useBrew() {
     }
   }
 
-  // 只刷新 casks (GUI 应用)
+  // 只刷新 casks (GUI 应用) — 按需获取，不再拉取全部数据
   async function refreshCasks() {
     try {
-      const res = await GetBrewData()
-      const iconMap = await GetAppIcons(res.casks.map(c => c.name))
-      data.casks = res.casks.map(item => ({
+      const casks = await GetBrewCasks()
+      const iconMap = await GetAppIcons(casks.map(c => c.name))
+      data.casks = casks.map(item => ({
         ...item,
         iconBase64: iconMap[item.name] || ''
       }))
@@ -128,21 +128,19 @@ export function useBrew() {
     }
   }
 
-  // 只刷新 formulae (命令行工具)
+  // 只刷新 formulae (命令行工具) — 按需获取，不再拉取全部数据
   async function refreshFormulae() {
     try {
-      const res = await GetBrewData()
-      data.formulae = res.formulae
+      data.formulae = await GetBrewFormulae()
     } catch (err) {
       console.error("刷新 Formulae 失败:", err)
     }
   }
 
-  // 只刷新 taps
+  // 只刷新 taps — 直接调用 GetBrewTaps，不再经过 GetBrewData
   async function refreshTaps() {
     try {
-      const res = await GetBrewData()
-      data.taps = res.taps || []
+      data.taps = await GetBrewTaps() || []
     } catch (err) {
       console.error("刷新 Taps 失败:", err)
     }
@@ -241,13 +239,13 @@ export function useBrew() {
     }
   }
 
-  async function handleRemoveTap(tapName, force = false) {
+  async function handleRemoveTap(tapName) {
     const key = `tap-remove-${tapName}`
     if (processingMap.has(key)) return
     processingMap.set(key, true)
     
     try {
-      const result = await RemoveTap(tapName, force)
+      const result = await RemoveTap(tapName)
       showToast(result.message, result.success ? 'success' : 'error')
       if (result.success) {
         await refreshTaps()

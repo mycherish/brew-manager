@@ -18,7 +18,6 @@ export namespace main {
 	}
 	export class BrewTap {
 	    name: string;
-	    official: boolean;
 	    url: string;
 	    description: string;
 	
@@ -29,7 +28,6 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
-	        this.official = source["official"];
 	        this.url = source["url"];
 	        this.description = source["description"];
 	    }

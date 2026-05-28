@@ -11,3 +11,4 @@ frontend/node_modules/
 
 # Go 依赖
 vendor/
+wails-test

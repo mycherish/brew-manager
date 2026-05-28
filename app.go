@@ -37,8 +37,7 @@ type ServiceInfo struct {
 
 // BrewTap 定义 Homebrew tap 的数据结构
 type BrewTap struct {
-	Name        string `json:"name"`        // tap 名称，如 "homebrew/core"
-	Official    bool   `json:"official"`    // 是否为官方 tap
+	Name        string `json:"name"`        // tap 名称，如 "shivammathur/php"
 	URL         string `json:"url"`         // tap 的 Git URL
 	Description string `json:"description"` // tap 描述（可选）
 }
@@ -85,6 +84,30 @@ func (a *App) GetBrewData() BrewData {
 	}
 }
 
+// GetBrewFormulae 仅获取已安装的 formulae（命令行工具），用于 Tab 刷新
+func (a *App) GetBrewFormulae() []BrewPackage {
+	services := getServiceStatusMap()
+	return fetchWithStatus("--formula", services)
+}
+
+// GetBrewCasks 仅获取已安装的 casks（GUI 应用），用于 Tab 刷新
+func (a *App) GetBrewCasks() []BrewPackage {
+	services := getServiceStatusMap()
+	return fetchWithStatus("--cask", services)
+}
+
+// getServiceStatusMap 获取所有服务状态的映射表（公共提取）
+func getServiceStatusMap() map[string]string {
+	services := make(map[string]string)
+	serviceRaw, _ := exec.Command(getBrewPath(), "services", "info", "--all", "--json").Output()
+	var serviceList []ServiceInfo
+	json.Unmarshal(serviceRaw, &serviceList)
+	for _, s := range serviceList {
+		services[s.Name] = s.Status
+	}
+	return services
+}
+
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{}
@@ -109,26 +132,48 @@ func (a *App) Greet(name string) string {
 
 // brew list 命令并返回字符串数组
 func fetchWithStatus(flag string, serviceMap map[string]string) []BrewPackage {
-	out, _ := exec.Command(getBrewPath(), "list", "--versions", flag).Output()
+	brewPath := getBrewPath()
+
+	// 1. 优先使用 brew list --versions <flag>（含版本号）
+	out, _ := exec.Command(brewPath, "list", "--versions", flag).Output()
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+
+	// 2. 如果 --versions 失败（Homebrew 某些版本有 bug），fallback 到 brew list <flag>（仅名称）
+	fallbackMode := false
+	if len(lines) == 0 || (len(lines) == 1 && strings.TrimSpace(lines[0]) == "") {
+		out, _ = exec.Command(brewPath, "list", flag).Output()
+		lines = strings.Split(strings.TrimSpace(string(out)), "\n")
+		fallbackMode = true
+	}
+
 	var packages []BrewPackage
 
 	for _, line := range lines {
-		parts := strings.Fields(line)
-		if len(parts) >= 2 {
-			name := parts[0]
-			version := strings.Join(parts[1:], " ")
-			status, isService := serviceMap[name]
-			if !isService {
-				status = "none_tool" // 普通工具，没有服务状态，服务停止会显示 none
-			}
-
-			packages = append(packages, BrewPackage{
-				Name:    name,
-				Version: version,
-				Status:  status,
-			})
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
 		}
+		parts := strings.Fields(line)
+		var name, version string
+		if fallbackMode || len(parts) < 2 {
+			// fallback 模式：每行只有一个名称，版本未知
+			name = parts[0]
+			version = ""
+		} else {
+			name = parts[0]
+			version = strings.Join(parts[1:], " ")
+		}
+
+		status, isService := serviceMap[name]
+		if !isService {
+			status = "none_tool" // 普通工具，没有服务状态，服务停止会显示 none
+		}
+
+		packages = append(packages, BrewPackage{
+			Name:    name,
+			Version: version,
+			Status:  status,
+		})
 	}
 	// --- 排序逻辑开始 ---
 	sort.Slice(packages, func(i, j int) bool {
@@ -188,6 +233,7 @@ func (a *App) GetAppIcon(appName string) string {
 		"google-chrome":      "Google Chrome",
 		"visual-studio-code": "Visual Studio Code",
 		"dbeaver-community":  "DBeaver", // 针对 DBeaver 的映射
+		"cc-switch":          "CC Switch",
 	}
 
 	// 2. 生成可能的 App 搜索名称
@@ -310,80 +356,104 @@ func (a *App) RestartService(name string) ActionResponse {
 
 // ------------------------ Tap 管理功能 ------------------------
 
-// GetBrewTaps 获取所有已安装的 taps
+// GetBrewTaps 获取所有已安装的 taps（批量优化：一次性获取所有 tap 信息）
 func (a *App) GetBrewTaps() []BrewTap {
 	brewPath := getBrewPath()
-	// 执行 brew tap 命令获取已安装的 tap 列表
+	// 1. 先用 brew tap 获取已安装的 tap 名称列表（廉价操作）
 	cmd := exec.Command(brewPath, "tap")
 	output, err := cmd.Output()
 	if err != nil {
 		return []BrewTap{}
 	}
 
-	var taps []BrewTap
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	for _, line := range lines {
-		if line == "" {
-			continue
+	tapNames := strings.Split(strings.TrimSpace(string(output)), "\n")
+	var validNames []string
+	for _, name := range tapNames {
+		name = strings.TrimSpace(name)
+		if name != "" {
+			validNames = append(validNames, name)
 		}
-		tap := parseTapInfo(line, brewPath)
+	}
+
+	if len(validNames) == 0 {
+		return []BrewTap{}
+	}
+
+	// 2. 一次性调用 brew tap-info --json <all_names> 获取所有 tap 详情
+	args := append([]string{"tap-info", "--json"}, validNames...)
+	infoOutput, err := exec.Command(brewPath, args...).Output()
+	if err != nil {
+		// 如果批量查询失败，退回到只返回名称的结果
+		var fallback []BrewTap
+		for _, name := range validNames {
+			fallback = append(fallback, BrewTap{Name: name})
+		}
+		return fallback
+	}
+
+	// 3. 解析批量 JSON 结果
+	var tapInfos []struct {
+		Name        string `json:"name"`
+		Remote      string `json:"remote"`
+		Description string `json:"desc"`
+	}
+	if json.Unmarshal(infoOutput, &tapInfos) != nil {
+		// JSON 解析失败，退回基础结果
+		var fallback []BrewTap
+		for _, name := range validNames {
+			fallback = append(fallback, BrewTap{Name: name})
+		}
+		return fallback
+	}
+
+	// 4. 构建 name -> tapInfo 的映射
+	infoMap := make(map[string]struct {
+		Name        string `json:"name"`
+		Remote      string `json:"remote"`
+		Description string `json:"desc"`
+	}, len(tapInfos))
+	for _, info := range tapInfos {
+		infoMap[info.Name] = info
+	}
+
+	// 5. 按原始顺序组装结果
+	var taps []BrewTap
+	for _, name := range validNames {
+		tap := BrewTap{Name: name}
+		if info, ok := infoMap[name]; ok {
+			tap.URL = info.Remote
+			tap.Description = info.Description
+		}
 		taps = append(taps, tap)
 	}
 
 	return taps
 }
 
-// parseTapInfo 解析单个 tap 的信息
-func parseTapInfo(tapName, brewPath string) BrewTap {
-	tap := BrewTap{
-		Name: tapName,
+// getTapNameList 获取 tap 名称列表（轻量操作，仅 brew tap）
+func getTapNameList() []string {
+	brewPath := getBrewPath()
+	output, err := exec.Command(brewPath, "tap").Output()
+	if err != nil {
+		return nil
 	}
-
-	// 检查是否为官方 tap
-	officialTaps := []string{
-		"homebrew/core",
-		"homebrew/cask",
-		"homebrew/cask-fonts",
-		"homebrew/cask-drivers",
-		"homebrew/cask-versions",
-		"homebrew/bundle",
-		"homebrew/services",
-	}
-
-	for _, official := range officialTaps {
-		if tapName == official {
-			tap.Official = true
-			break
+	var names []string
+	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			names = append(names, line)
 		}
 	}
-
-	// 获取 tap 的 Git URL
-	cmd := exec.Command(brewPath, "tap-info", tapName, "--json")
-	output, err := cmd.Output()
-	if err == nil {
-		// 解析 JSON 获取 tap 信息
-		var tapInfos []struct {
-			Name        string `json:"name"`
-			Remote      string `json:"remote"`
-			Description string `json:"desc"`
-		}
-		if json.Unmarshal(output, &tapInfos) == nil && len(tapInfos) > 0 {
-			tap.URL = tapInfos[0].Remote
-			tap.Description = tapInfos[0].Description
-		}
-	}
-
-	return tap
+	return names
 }
 
 // AddTap 添加新的 tap
 func (a *App) AddTap(tapName string) ActionResponse {
 	brewPath := getBrewPath()
 
-	// 检查 tap 是否已经存在
-	taps := a.GetBrewTaps()
-	for _, tap := range taps {
-		if tap.Name == tapName {
+	// 检查 tap 是否已经存在（轻量检查，仅 brew tap 获取名称列表）
+	for _, name := range getTapNameList() {
+		if name == tapName {
 			return ActionResponse{
 				Success: false,
 				Message: fmt.Sprintf("Tap '%s' 已经存在", tapName),
@@ -408,17 +478,8 @@ func (a *App) AddTap(tapName string) ActionResponse {
 }
 
 // RemoveTap 移除 tap
-func (a *App) RemoveTap(tapName string, force bool) ActionResponse {
+func (a *App) RemoveTap(tapName string) ActionResponse {
 	brewPath := getBrewPath()
-
-	// 检查是否为官方 tap，警告用户
-	tap := parseTapInfo(tapName, brewPath)
-	if tap.Official && !force {
-		return ActionResponse{
-			Success: false,
-			Message: fmt.Sprintf("警告: '%s' 是官方 tap，不建议移除。如确认移除，请使用强制删除。", tapName),
-		}
-	}
 
 	// 执行 brew untap 命令移除 tap
 	cmd := exec.Command(brewPath, "untap", tapName)
@@ -440,11 +501,10 @@ func (a *App) RemoveTap(tapName string, force bool) ActionResponse {
 func (a *App) UpdateTap(tapName string) ActionResponse {
 	brewPath := getBrewPath()
 
-	// 检查 tap 是否存在
-	taps := a.GetBrewTaps()
+	// 检查 tap 是否存在（轻量检查）
 	found := false
-	for _, tap := range taps {
-		if tap.Name == tapName {
+	for _, name := range getTapNameList() {
+		if name == tapName {
 			found = true
 			break
 		}
