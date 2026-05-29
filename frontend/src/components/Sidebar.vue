@@ -74,8 +74,13 @@ function formatTimeLeft(progress) {
 
 <template>
   <aside class="sidebar">
+    <!-- 顶部拖拽区域 -->
+    <div class="sidebar-drag-region"></div>
     <!-- 顶部标题 -->
     <div class="sidebar-header">
+      <div class="app-logo">
+        <img src="../assets/images/logo.png" width="40" height="40" alt="Brew Manager" />
+      </div>
       <h1 class="app-title">Brew Manager</h1>
     </div>
     
@@ -143,7 +148,17 @@ function formatTimeLeft(progress) {
   border-right: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
-  padding: 20px 0;
+  padding: 0 0 20px;
+}
+
+/**
+ * 顶部拖拽区域（用于拖动窗口）
+ */
+.sidebar-drag-region {
+  --wails-draggable: drag;
+  height: 40px;
+  width: 100%;
+  flex-shrink: 0;
 }
 
 /**
@@ -153,6 +168,21 @@ function formatTimeLeft(progress) {
   padding: 0 16px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/**
+ * Logo 图标
+ */
+.app-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
 }
 
 .app-title {
