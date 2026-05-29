@@ -11,7 +11,7 @@ import DockerContainers from './views/DockerContainers.vue'
 
 const {
   data, currentTab, setCurrentTab, stats,
-  processingMap, toast,
+  processingMap, toast, showToast,
   refreshProgress, // 自动刷新进度
   updateList, refreshCurrentTab,
   handleService, handleRestart,
@@ -111,6 +111,7 @@ onUnmounted(() => {
         <DockerContainers
           v-else-if="currentTab === 'docker'"
           @update-count="updateDockerCount"
+          @show-toast="({ msg, type }) => showToast(msg, type)"
         />
       </div>
     </main>

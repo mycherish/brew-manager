@@ -3,7 +3,7 @@ import { ref, reactive } from 'vue'
 import { SearchPackages, InstallPackage } from '../../wailsjs/go/main/App'
 
 // Emits
-const emit = defineEmits(['install-success', 'add-tap'])
+const emit = defineEmits(['install-success', 'add-tap', 'show-toast'])
 
 // Local state
 const searchQuery = ref('')
@@ -49,12 +49,12 @@ async function handleInstall(name, isCask) {
     const result = await InstallPackage(name, isCask)
     if (result.success) {
       emit('install-success', name)
-      alert(result.message)
+      emit('show-toast', { msg: result.message, type: 'success' })
     } else {
-      alert(result.message)
+      emit('show-toast', { msg: result.message, type: 'error' })
     }
   } catch (err) {
-    alert('安装失败: ' + err)
+    emit('show-toast', { msg: '安装失败: ' + err, type: 'error' })
   } finally {
     delete installing[name]
   }

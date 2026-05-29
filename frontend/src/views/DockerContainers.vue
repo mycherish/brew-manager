@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { GetDockerContainers, StartDockerContainer, StopDockerContainer } from '../../wailsjs/go/main/App'
 
-const emit = defineEmits(['update-count'])
+const emit = defineEmits(['update-count', 'show-toast'])
 
 const containers = ref([])
 const loading = ref(true)
@@ -51,7 +51,7 @@ async function startContainer(container) {
     if (result.success) {
       await loadContainers()
     } else {
-      alert(result.message)
+      emit('show-toast', { msg: result.message, type: 'error' })
     }
   } finally {
     processingMap.value.delete(key)
@@ -66,7 +66,7 @@ async function stopContainer(container) {
     if (result.success) {
       await loadContainers()
     } else {
-      alert(result.message)
+      emit('show-toast', { msg: result.message, type: 'error' })
     }
   } finally {
     processingMap.value.delete(key)
