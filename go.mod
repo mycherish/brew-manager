@@ -1,4 +1,4 @@
-module wails-test
+module github.com/xuweidong/brew-manager
 
 go 1.24.0
 
