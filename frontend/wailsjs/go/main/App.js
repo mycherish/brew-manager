@@ -6,12 +6,20 @@ export function AddTap(arg1) {
   return window['go']['main']['App']['AddTap'](arg1);
 }
 
+export function DeleteLaunchGroup(arg1) {
+  return window['go']['main']['App']['DeleteLaunchGroup'](arg1);
+}
+
 export function GetAppIcon(arg1) {
   return window['go']['main']['App']['GetAppIcon'](arg1);
 }
 
 export function GetAppIcons(arg1) {
   return window['go']['main']['App']['GetAppIcons'](arg1);
+}
+
+export function GetAvailableServices() {
+  return window['go']['main']['App']['GetAvailableServices']();
 }
 
 export function GetBrewCasks() {
@@ -34,6 +42,10 @@ export function GetDockerContainers() {
   return window['go']['main']['App']['GetDockerContainers']();
 }
 
+export function GetLaunchGroups() {
+  return window['go']['main']['App']['GetLaunchGroups']();
+}
+
 export function GetTapPackageCount(arg1) {
   return window['go']['main']['App']['GetTapPackageCount'](arg1);
 }
@@ -46,12 +58,24 @@ export function InstallPackage(arg1, arg2) {
   return window['go']['main']['App']['InstallPackage'](arg1, arg2);
 }
 
+export function LaunchGroup(arg1) {
+  return window['go']['main']['App']['LaunchGroup'](arg1);
+}
+
 export function RemoveTap(arg1) {
   return window['go']['main']['App']['RemoveTap'](arg1);
 }
 
+export function RestartGroup(arg1) {
+  return window['go']['main']['App']['RestartGroup'](arg1);
+}
+
 export function RestartService(arg1) {
   return window['go']['main']['App']['RestartService'](arg1);
+}
+
+export function SaveLaunchGroup(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SaveLaunchGroup'](arg1, arg2, arg3);
 }
 
 export function SearchPackages(arg1) {
@@ -72,6 +96,10 @@ export function StartService(arg1) {
 
 export function StopDockerContainer(arg1) {
   return window['go']['main']['App']['StopDockerContainer'](arg1);
+}
+
+export function StopGroup(arg1) {
+  return window['go']['main']['App']['StopGroup'](arg1);
 }
 
 export function StopService(arg1) {

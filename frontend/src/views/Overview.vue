@@ -4,6 +4,7 @@
  * 显示系统统计数据和最近安装的软件
  */
 import { computed } from 'vue'
+import LaunchPad from './LaunchPad.vue'
 
 const props = defineProps({
   // Homebrew 数据
@@ -17,6 +18,8 @@ const props = defineProps({
     default: false
   }
 })
+
+const emit = defineEmits(['show-toast'])
 
 // 计算统计数据
 const stats = computed(() => ({
@@ -74,6 +77,9 @@ const recentItems = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- 一键启动面板 -->
+    <LaunchPad @show-toast="({ msg, type }) => emit('show-toast', { msg, type })" />
 
     <!-- 最近安装 -->
     <div class="recent-section" v-if="recentItems.length > 0">

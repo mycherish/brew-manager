@@ -75,6 +75,7 @@ onUnmounted(() => {
           v-if="currentTab === 'overview'"
           :data="data"
           :is-processing="data.loading"
+          @show-toast="({ msg, type }) => showToast(msg, type)"
         />
         
         <!-- GUI 应用页 -->

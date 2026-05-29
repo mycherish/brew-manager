@@ -740,10 +740,9 @@ func (a *App) GetDockerContainers() ActionResponse {
 		return ActionResponse{Success: false, Message: "Docker 未安装"}
 	}
 
-	cmd := exec.Command("docker", "ps", "-a", "--format", "json")
-	output, err := cmd.CombinedOutput()
+	containers, err := parseDockerContainers()
 	if err != nil {
-		errMsg := string(output)
+		errMsg := err.Error()
 		if strings.Contains(errMsg, "Is the docker daemon running") || strings.Contains(errMsg, "Cannot connect to the Docker daemon") {
 			return ActionResponse{Success: false, Message: "Docker 未启动", Data: "not_running"}
 		}
@@ -751,6 +750,17 @@ func (a *App) GetDockerContainers() ActionResponse {
 			return ActionResponse{Success: false, Message: "Docker 权限不足，请检查用户组设置"}
 		}
 		return ActionResponse{Success: false, Message: fmt.Sprintf("Docker 错误: %s", errMsg)}
+	}
+
+	return ActionResponse{Success: true, Data: containers}
+}
+
+// parseDockerContainers 执行 docker ps -a --format json 并解析容器列表
+func parseDockerContainers() ([]DockerContainer, error) {
+	cmd := exec.Command("docker", "ps", "-a", "--format", "json")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("%s", string(output))
 	}
 
 	var containers []DockerContainer
@@ -767,7 +777,8 @@ func (a *App) GetDockerContainers() ActionResponse {
 			State  string `json:"State"`
 			Ports  string `json:"Ports"`
 		}
-		if err := json.Unmarshal([]byte(line), &c); err != nil {
+		// 将json字符串转换为结构体
+		if json.Unmarshal([]byte(line), &c) != nil {
 			continue
 		}
 		containers = append(containers, DockerContainer{
@@ -775,8 +786,7 @@ func (a *App) GetDockerContainers() ActionResponse {
 			Status: c.Status, State: c.State, Ports: c.Ports,
 		})
 	}
-
-	return ActionResponse{Success: true, Data: containers}
+	return containers, nil
 }
 
 // shortID 安全截取容器 ID（防止越界 panic）
@@ -844,4 +854,325 @@ func (a *App) StartDocker() ActionResponse {
 	}
 
 	return ActionResponse{Success: true, Message: "Docker Desktop 正在启动，请稍候..."}
+}
+
+// ------------------------ 一键启动面板 (LaunchPad) ------------------------
+
+// LaunchGroup 服务组配置
+type LaunchGroup struct {
+	Name             string   `json:"name"`
+	BrewServices     []string `json:"brew_services"`
+	DockerContainers []string `json:"docker_containers"`
+}
+
+// LaunchItemResult 单个启动结果
+type LaunchItemResult struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"` // "brew" 或 "docker"
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+// launchGroupsConfigPath 获取服务组配置文件的路径
+func launchGroupsConfigPath() string {
+	home, _ := os.UserHomeDir()
+	configDir := filepath.Join(home, ".brew-manager")
+	os.MkdirAll(configDir, 0755)
+	return filepath.Join(configDir, "launch-groups.json")
+}
+
+// loadLaunchGroups 从配置文件加载服务组列表
+func loadLaunchGroups() []LaunchGroup {
+	path := launchGroupsConfigPath()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return []LaunchGroup{}
+	}
+	var groups []LaunchGroup
+	if json.Unmarshal(data, &groups) != nil {
+		return []LaunchGroup{}
+	}
+	return groups
+}
+
+// findLaunchGroup 按名称查找服务组，未找到时返回 error
+func findLaunchGroup(name string) (*LaunchGroup, error) {
+	groups := loadLaunchGroups()
+	for i := range groups {
+		if groups[i].Name == name {
+			return &groups[i], nil
+		}
+	}
+	return nil, fmt.Errorf("服务组 '%s' 不存在", name)
+}
+
+// saveLaunchGroups 保存服务组列表到配置文件
+func saveLaunchGroups(groups []LaunchGroup) error {
+	path := launchGroupsConfigPath()
+	data, err := json.MarshalIndent(groups, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
+}
+
+// GetLaunchGroups 获取所有服务组
+func (a *App) GetLaunchGroups() []LaunchGroup {
+	return loadLaunchGroups()
+}
+
+// SaveLaunchGroup 保存或更新一个服务组
+func (a *App) SaveLaunchGroup(name string, brewServices []string, dockerContainers []string) ActionResponse {
+	if name == "" {
+		return ActionResponse{Success: false, Message: "服务组名称不能为空"}
+	}
+
+	groups := loadLaunchGroups()
+
+	// 查找是否已存在同名组，存在则更新
+	found := false
+	for i, g := range groups {
+		if g.Name == name {
+			groups[i].BrewServices = brewServices
+			groups[i].DockerContainers = dockerContainers
+			found = true
+			break
+		}
+	}
+	if !found {
+		groups = append(groups, LaunchGroup{
+			Name:             name,
+			BrewServices:     brewServices,
+			DockerContainers: dockerContainers,
+		})
+	}
+
+	if err := saveLaunchGroups(groups); err != nil {
+		return ActionResponse{Success: false, Message: fmt.Sprintf("保存失败: %v", err)}
+	}
+
+	return ActionResponse{Success: true, Message: fmt.Sprintf("服务组 '%s' 已保存", name)}
+}
+
+// DeleteLaunchGroup 删除一个服务组
+func (a *App) DeleteLaunchGroup(name string) ActionResponse {
+	groups := loadLaunchGroups()
+	var newGroups []LaunchGroup
+	found := false
+	for _, g := range groups {
+		if g.Name == name {
+			found = true
+			continue
+		}
+		newGroups = append(newGroups, g)
+	}
+	if !found {
+		return ActionResponse{Success: false, Message: fmt.Sprintf("服务组 '%s' 不存在", name)}
+	}
+	if err := saveLaunchGroups(newGroups); err != nil {
+		return ActionResponse{Success: false, Message: fmt.Sprintf("删除失败: %v", err)}
+	}
+	return ActionResponse{Success: true, Message: fmt.Sprintf("服务组 '%s' 已删除", name)}
+}
+
+// RestartGroup 重启指定服务组中的所有服务（先停止再启动）
+func (a *App) RestartGroup(name string) ActionResponse {
+	target, err := findLaunchGroup(name)
+	if err != nil {
+		return ActionResponse{Success: false, Message: err.Error()}
+	}
+
+	var results []LaunchItemResult
+	brewPath := getBrewPath()
+
+	// 1. 重启 Brew 服务
+	for _, svc := range target.BrewServices {
+		out, err := exec.Command(brewPath, "services", "restart", svc).CombinedOutput()
+		if err != nil {
+			results = append(results, LaunchItemResult{
+				Name: svc, Type: "brew", Success: false,
+				Message: fmt.Sprintf("重启失败: %s", strings.TrimSpace(string(out))),
+			})
+		} else {
+			results = append(results, LaunchItemResult{
+				Name: svc, Type: "brew", Success: true, Message: "已重启",
+			})
+		}
+	}
+
+	// 2. 重启 Docker 容器
+	for _, container := range target.DockerContainers {
+		_, stopErr := exec.Command("docker", "stop", container).CombinedOutput()
+		out, startErr := exec.Command("docker", "start", container).CombinedOutput()
+		if stopErr != nil || startErr != nil {
+			results = append(results, LaunchItemResult{
+				Name: container, Type: "docker", Success: false,
+				Message: fmt.Sprintf("重启失败: %s", strings.TrimSpace(string(out))),
+			})
+		} else {
+			results = append(results, LaunchItemResult{
+				Name: container, Type: "docker", Success: true, Message: "已重启",
+			})
+		}
+	}
+
+	successCount := 0
+	for _, r := range results {
+		if r.Success {
+			successCount++
+		}
+	}
+
+	return ActionResponse{
+		Success: true,
+		Message: fmt.Sprintf("重启服务组 '%s'：%d/%d 项成功", name, successCount, len(results)),
+		Data:    results,
+	}
+}
+
+// LaunchGroup 启动指定服务组中的所有服务
+func (a *App) LaunchGroup(name string) ActionResponse {
+	target, err := findLaunchGroup(name)
+	if err != nil {
+		return ActionResponse{Success: false, Message: err.Error()}
+	}
+
+	var results []LaunchItemResult
+	brewPath := getBrewPath()
+
+	// 1. 启动 Brew 服务
+	for _, svc := range target.BrewServices {
+		out, err := exec.Command(brewPath, "services", "start", svc).CombinedOutput()
+		if err != nil {
+			results = append(results, LaunchItemResult{
+				Name: svc, Type: "brew", Success: false,
+				Message: fmt.Sprintf("启动失败: %s", strings.TrimSpace(string(out))),
+			})
+		} else {
+			results = append(results, LaunchItemResult{
+				Name: svc, Type: "brew", Success: true, Message: "已启动",
+			})
+		}
+	}
+
+	// 2. 启动 Docker 容器
+	for _, container := range target.DockerContainers {
+		out, err := exec.Command("docker", "start", container).CombinedOutput()
+		if err != nil {
+			results = append(results, LaunchItemResult{
+				Name: container, Type: "docker", Success: false,
+				Message: fmt.Sprintf("启动失败: %s", strings.TrimSpace(string(out))),
+			})
+		} else {
+			results = append(results, LaunchItemResult{
+				Name: container, Type: "docker", Success: true, Message: "已启动",
+			})
+		}
+	}
+
+	// 统计结果
+	successCount := 0
+	for _, r := range results {
+		if r.Success {
+			successCount++
+		}
+	}
+
+	return ActionResponse{
+		Success: true,
+		Message: fmt.Sprintf("服务组 '%s'：%d/%d 项成功", name, successCount, len(results)),
+		Data:    results,
+	}
+}
+
+// StopGroup 停止指定服务组中的所有服务
+func (a *App) StopGroup(name string) ActionResponse {
+	target, err := findLaunchGroup(name)
+	if err != nil {
+		return ActionResponse{Success: false, Message: err.Error()}
+	}
+
+	var results []LaunchItemResult
+	brewPath := getBrewPath()
+
+	// 1. 停止 Brew 服务
+	for _, svc := range target.BrewServices {
+		out, err := exec.Command(brewPath, "services", "stop", svc).CombinedOutput()
+		if err != nil {
+			results = append(results, LaunchItemResult{
+				Name: svc, Type: "brew", Success: false,
+				Message: fmt.Sprintf("停止失败: %s", strings.TrimSpace(string(out))),
+			})
+		} else {
+			results = append(results, LaunchItemResult{
+				Name: svc, Type: "brew", Success: true, Message: "已停止",
+			})
+		}
+	}
+
+	// 2. 停止 Docker 容器
+	for _, container := range target.DockerContainers {
+		out, err := exec.Command("docker", "stop", container).CombinedOutput()
+		if err != nil {
+			results = append(results, LaunchItemResult{
+				Name: container, Type: "docker", Success: false,
+				Message: fmt.Sprintf("停止失败: %s", strings.TrimSpace(string(out))),
+			})
+		} else {
+			results = append(results, LaunchItemResult{
+				Name: container, Type: "docker", Success: true, Message: "已停止",
+			})
+		}
+	}
+
+	successCount := 0
+	for _, r := range results {
+		if r.Success {
+			successCount++
+		}
+	}
+
+	return ActionResponse{
+		Success: true,
+		Message: fmt.Sprintf("停止组 '%s'：%d/%d 项成功", name, successCount, len(results)),
+		Data:    results,
+	}
+}
+
+// GetAvailableServices 获取所有可用于服务组的服务列表（仅 Brew 服务 + Docker 容器，排除非服务包）
+func (a *App) GetAvailableServices() map[string]interface{} {
+	// 只获取 brew services info 中有记录的服务（即真正的服务，而非普通 CLI 工具或 cask 应用）
+	serviceMap := getServiceStatusMap()
+	brewPath := getBrewPath()
+
+	// 通过 brew services info --all --json 获取服务列表（自带名称和状态）
+	var brewServices []BrewPackage
+	serviceRaw, _ := exec.Command(brewPath, "services", "info", "--all", "--json").Output()
+	var serviceList []ServiceInfo
+	if json.Unmarshal(serviceRaw, &serviceList) == nil {
+		for _, svc := range serviceList {
+			brewServices = append(brewServices, BrewPackage{
+				Name:   svc.Name,
+				Status: svc.Status,
+			})
+		}
+	}
+
+	// 如果上面的 JSON 方式失败，fallback：从 serviceMap 的 key 构建
+	if len(brewServices) == 0 && len(serviceMap) > 0 {
+		for name, status := range serviceMap {
+			brewServices = append(brewServices, BrewPackage{
+				Name:   name,
+				Status: status,
+			})
+		}
+	}
+
+	// 获取 Docker 容器
+	dockerContainers, _ := parseDockerContainers()
+
+	return map[string]interface{}{
+		"brew_services":     brewServices,
+		"docker_containers": dockerContainers,
+	}
 }

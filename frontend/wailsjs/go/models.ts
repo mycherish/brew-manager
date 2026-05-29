@@ -83,6 +83,23 @@ export namespace main {
 		}
 	}
 	
+	
+	export class LaunchGroup {
+	    name: string;
+	    brew_services: string[];
+	    docker_containers: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new LaunchGroup(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.brew_services = source["brew_services"];
+	        this.docker_containers = source["docker_containers"];
+	    }
+	}
 
 }
 
