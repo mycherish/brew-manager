@@ -22,20 +22,37 @@
 - 📦 **双列表展示**：清晰区分终端工具 (Formulae) 与桌面应用 (Casks)。
 - 🔌 **Tap 管理**：全面支持 Homebrew Tap 的添加、移除、更新操作，轻松管理第三方软件源。
 - 🐳 **Docker 容器管理**：查看、启动、停止 Docker 容器，实时监控容器状态。
+- 🚀 **LaunchPad 一键启动**：将 Brew 服务 + Docker 容器打包为服务组，批量启动/停止/重启。
 - 📊 **侧边栏统计**：实时显示 GUI 应用、命令行工具、Taps、Docker 容器数量。
 
 ---
 
-## 🆕 v1.4.0 新功能
+## 🆕 v1.5.0 新功能
+
+### 🚀 LaunchPad 一键启动面板
+- 将 Brew 服务 + Docker 容器自由组合为"服务组"
+- 支持批量启动/停止/重启服务组内所有服务
+- 服务组配置持久化保存（JSON 文件）
+- 实时显示每组运行状态（全部运行 / 部分运行 / 已停止）
+- 操作结果面板逐项展示成功/失败详情
+- Modal 搜索 + 分类筛选（Brew / Docker）
 
 ### 🐳 Docker 容器管理
 - 查看所有 Docker 容器列表（运行状态、镜像、端口）
-- 一键启动/停止容器
-- 本地搜索过滤容器
+- 一键启动/停止容器，未安装时引导启动 Docker Desktop
+- 自动轮询检测 Docker Desktop 启动完成
 - 实时状态指示（运行中/已停止/暂停）
-- 自动检测 Docker 是否安装/启动
 - 侧边栏实时显示容器数量徽章
-- 参与自动刷新（每 2 分钟更新）
+
+### ⚡ 性能优化
+- Tab 独立刷新：切换页面只请求对应数据，不再全量查询
+- 后端按需接口拆分（GetBrewCasks / GetBrewFormulae / GetBrewTaps）
+- 批量图标加载，减少 RPC 调用次数
+- 提取公共函数（findLaunchGroup / parseDockerContainers）减少代码重复
+
+### 🔧 Tap 管理简化
+- 移除官方/第三方 Tap 分类，统一管理体验
+- 批量查询优化，使用 `brew tap-info --json` 一次性获取所有 Tap 信息
 
 ---
 
@@ -69,9 +86,9 @@
 
 ## 📸 界面预览
 
-| 概览 | GUI 应用 | Docker 容器管理 |
-| :--- | :--- | :--- |
-| ![](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260414181627679.png) | ![](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260414181841200.png) | ![](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260414181924772.png) |
+| 概览 | GUI 应用 | Docker 容器管理 | LaunchPad |
+| :--- | :--- | :--- | :--- |
+| ![](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260530000844103.png) | ![](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260530000944841.png) | ![](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260530001159764.png) | ![](https://cdn.jsdelivr.net/gh/mycherish/imgCloud/img/20260530000716319.png) |
 
 ---
 
@@ -159,6 +176,13 @@ wails dev
 - 使用搜索框过滤容器（按名称或镜像）
 - 状态指示灯显示容器当前状态
 - 点击刷新按钮更新容器列表
+
+### 6. LaunchPad 一键启动
+- 点击概览页 **"新建服务组"** 创建服务组
+- 勾选需要管理的 Brew 服务 + Docker 容器
+- 保存后在概览页即可一键启动/停止/重启整个服务组
+- 卡片自动显示每组运行状态
+- 操作后查看结果面板了解每项执行情况
 
 ---
 
