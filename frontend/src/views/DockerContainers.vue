@@ -1,14 +1,17 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { GetDockerContainers, StartDockerContainer, StopDockerContainer } from '../../wailsjs/go/main/App'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { GetDockerContainers, StartDockerContainer, StopDockerContainer, StartDocker } from '../../wailsjs/go/main/App'
 
 const emit = defineEmits(['update-count', 'show-toast'])
 
 const containers = ref([])
 const loading = ref(true)
 const error = ref('')
+const errorType = ref('') // 'not_running' | 'not_installed' | ''
 const processingMap = ref(new Map())
 const localSearch = ref('')
+const startingDocker = ref(false)
+const dockerPollTimer = ref(null)
 
 const filteredContainers = computed(() => {
   if (!localSearch.value) return containers.value
@@ -26,10 +29,17 @@ const runningCount = computed(() => {
 async function loadContainers() {
   loading.value = true
   error.value = ''
+  errorType.value = ''
   try {
     const result = await GetDockerContainers()
     if (!result.success) {
       error.value = result.message
+      // 区分 Docker 未启动和未安装
+      if (result.data === 'not_running') {
+        errorType.value = 'not_running'
+      } else if (result.message === 'Docker 未安装') {
+        errorType.value = 'not_installed'
+      }
       containers.value = []
     } else {
       containers.value = result.data || []
@@ -38,6 +48,7 @@ async function loadContainers() {
     emit('update-count')
   } catch (e) {
     error.value = '无法连接 Docker，请确认 Docker Desktop 已启动'
+    errorType.value = 'not_running'
   } finally {
     loading.value = false
   }
@@ -77,8 +88,51 @@ function isProcessing(id) {
   return processingMap.value.has(id)
 }
 
+async function handleStartDocker() {
+  startingDocker.value = true
+  try {
+    const result = await StartDocker()
+    if (result.success) {
+      emit('show-toast', { msg: result.message, type: 'success' })
+      // 轮询等待 Docker 就绪，每 3 秒检测一次，最多 60 秒
+      let attempts = 0
+      dockerPollTimer.value = setInterval(async () => {
+        attempts++
+        try {
+          const res = await GetDockerContainers()
+          if (res.success) {
+            clearInterval(dockerPollTimer.value)
+            dockerPollTimer.value = null
+            startingDocker.value = false
+            await loadContainers()
+          } else if (attempts >= 20) {
+            clearInterval(dockerPollTimer.value)
+            dockerPollTimer.value = null
+            startingDocker.value = false
+            emit('show-toast', { msg: 'Docker 启动超时，请手动检查', type: 'error' })
+          }
+        } catch {
+          // 继续等待
+        }
+      }, 3000)
+    } else {
+      emit('show-toast', { msg: result.message, type: 'error' })
+      startingDocker.value = false
+    }
+  } catch (err) {
+    emit('show-toast', { msg: '启动 Docker 失败: ' + err, type: 'error' })
+    startingDocker.value = false
+  }
+}
+
 onMounted(() => {
   loadContainers()
+})
+
+onUnmounted(() => {
+  if (dockerPollTimer.value) {
+    clearInterval(dockerPollTimer.value)
+  }
 })
 </script>
 
@@ -116,7 +170,19 @@ onMounted(() => {
     <div v-else-if="error" class="error-state">
       <div class="error-icon">⚠️</div>
       <p>{{ error }}</p>
-      <button class="retry-btn" @click="loadContainers">重试</button>
+      <div class="error-actions">
+        <button
+          v-if="errorType === 'not_running'"
+          class="start-docker-btn"
+          :disabled="startingDocker"
+          @click="handleStartDocker"
+        >
+          <span v-if="startingDocker" class="btn-spinner"></span>
+          <span v-else>🚀</span>
+          {{ startingDocker ? '正在启动 Docker...' : '一键启动 Docker' }}
+        </button>
+        <button class="retry-btn" @click="loadContainers">重试</button>
+      </div>
     </div>
 
     <!-- 容器列表 -->
@@ -318,6 +384,39 @@ onMounted(() => {
 
 .retry-btn:hover {
   background: #0070E0;
+}
+
+.error-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.start-docker-btn {
+  margin-top: 16px;
+  padding: 10px 28px;
+  background: linear-gradient(135deg, #0A84FF, #5856D6);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.start-docker-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.start-docker-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .containers-list {

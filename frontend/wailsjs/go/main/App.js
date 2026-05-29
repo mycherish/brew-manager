@@ -58,6 +58,10 @@ export function SearchPackages(arg1) {
   return window['go']['main']['App']['SearchPackages'](arg1);
 }
 
+export function StartDocker() {
+  return window['go']['main']['App']['StartDocker']();
+}
+
 export function StartDockerContainer(arg1) {
   return window['go']['main']['App']['StartDockerContainer'](arg1);
 }

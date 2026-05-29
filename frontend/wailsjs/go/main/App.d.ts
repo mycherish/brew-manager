@@ -30,6 +30,8 @@ export function RestartService(arg1:string):Promise<main.ActionResponse>;
 
 export function SearchPackages(arg1:string):Promise<Record<string, any>>;
 
+export function StartDocker():Promise<main.ActionResponse>;
+
 export function StartDockerContainer(arg1:string):Promise<main.ActionResponse>;
 
 export function StartService(arg1:string):Promise<main.ActionResponse>;

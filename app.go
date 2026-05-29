@@ -744,8 +744,11 @@ func (a *App) GetDockerContainers() ActionResponse {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		errMsg := string(output)
-		if strings.Contains(errMsg, "permission denied") || strings.Contains(errMsg, "Is the docker daemon running") {
-			return ActionResponse{Success: false, Message: "Docker 未启动或权限不足"}
+		if strings.Contains(errMsg, "Is the docker daemon running") || strings.Contains(errMsg, "Cannot connect to the Docker daemon") {
+			return ActionResponse{Success: false, Message: "Docker 未启动", Data: "not_running"}
+		}
+		if strings.Contains(errMsg, "permission denied") {
+			return ActionResponse{Success: false, Message: "Docker 权限不足，请检查用户组设置"}
 		}
 		return ActionResponse{Success: false, Message: fmt.Sprintf("Docker 错误: %s", errMsg)}
 	}
@@ -814,4 +817,31 @@ func (a *App) StopDockerContainer(containerID string) ActionResponse {
 		Success: true,
 		Message: fmt.Sprintf("容器 %s 已停止", shortID(containerID)),
 	}
+}
+
+// StartDocker 启动 Docker Desktop 应用
+func (a *App) StartDocker() ActionResponse {
+	// 检查 Docker Desktop 是否已安装
+	dockerAppPaths := []string{
+		"/Applications/Docker.app",
+		os.ExpandEnv("$HOME/Applications/Docker.app"),
+	}
+	var dockerAppPath string
+	for _, p := range dockerAppPaths {
+		if _, err := os.Stat(p); err == nil {
+			dockerAppPath = p
+			break
+		}
+	}
+	if dockerAppPath == "" {
+		return ActionResponse{Success: false, Message: "未找到 Docker Desktop，请先安装"}
+	}
+
+	// 使用 open 命令启动 Docker Desktop
+	cmd := exec.Command("open", "-a", "Docker")
+	if err := cmd.Start(); err != nil {
+		return ActionResponse{Success: false, Message: fmt.Sprintf("启动 Docker Desktop 失败: %v", err)}
+	}
+
+	return ActionResponse{Success: true, Message: "Docker Desktop 正在启动，请稍候..."}
 }
